@@ -12,6 +12,11 @@ const DEFAULT_SELECTED = [
 ];
 const NOTES_DEFAULTS_VERSION = 2;
 const BEAT_OPTIONS = [2, 3, 4, 6, 8];
+const NOTE_ROWS = [
+  { label: "Sharps", items: ["c#", "d#", "e#", "f#", "g#", "a#", "b#"] },
+  { label: "Natural Notes", items: ["c", "d", "e", "f", "g", "a", "b"] },
+  { label: "Flats", items: ["cb", "db", "eb", "fb", "gb", "ab", "bb"] },
+];
 const PT_NOTE_NAMES = {
   c: "Dó",
   d: "Ré",
@@ -179,7 +184,7 @@ function noteToSpokenText(note, language) {
   return normalized;
 }
 
-export default function Home() {
+export function ToolPage() {
   const [timeInterval, setTimeInterval] = useState(() =>
     getStoredNumber("noteGenerator_timeInterval", 5),
   );
@@ -238,14 +243,6 @@ export default function Home() {
 
   const isCookieBannerOpen = analyticsConsent !== "accepted" && analyticsConsent !== "declined";
 
-  const groupedNotes = useMemo(
-    () => [
-      { label: "Standard Notes", items: STANDARD_NOTES },
-      { label: "Sharps", items: SHARP_NOTES },
-      { label: "Flats", items: FLAT_NOTES },
-    ],
-    [],
-  );
   const availableVoices = useMemo(() => {
     if (language === "pt-BR") {
       const ptBrVoices = allVoices.filter((voice) =>
@@ -669,37 +666,35 @@ export default function Home() {
           </p>
         </header>
 
-        <section className="grid items-start gap-3 xl:grid-cols-[1fr_250px_250px]">
-          <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3">
-            <p className="mb-3 text-xs uppercase tracking-[0.18em] text-cyan-200/80">Select Notes</p>
-            <div className="space-y-2.5">
-              {groupedNotes.map((group) => (
-                <div key={group.label} className="rounded-xl border border-slate-700 bg-slate-950/70 p-2.5">
-                  <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-slate-400">{group.label}</p>
-                  <div className="overflow-x-auto">
-                    <div className="flex min-w-max flex-nowrap gap-2">
-                    {group.items.map((note) => (
-                      <button
-                        type="button"
-                        key={note}
-                        aria-pressed={selectedNotes.includes(note)}
-                        onClick={() => toggleNote(note)}
-                        className={`h-10 w-10 rounded-full border text-[10px] font-medium transition ${
-                          selectedNotes.includes(note)
-                            ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
-                            : "border-slate-700 bg-slate-900/45 text-slate-400 opacity-55"
-                        } hover:border-cyan-300 hover:text-cyan-100`}
-                      >
-                        {formatNoteDisplay(note)}
-                      </button>
-                    ))}
-                    </div>
-                  </div>
+        <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3">
+          <p className="mb-3 text-xs uppercase tracking-[0.18em] text-cyan-200/80">Select Notes</p>
+          <div className="space-y-2">
+            {NOTE_ROWS.map((row) => (
+              <div key={row.label} className="rounded-xl border border-slate-700 bg-slate-950/70 p-2.5">
+                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-slate-400">{row.label}</p>
+                <div className="grid grid-cols-7 gap-2">
+                  {row.items.map((note) => (
+                    <button
+                      type="button"
+                      key={note}
+                      aria-pressed={selectedNotes.includes(note)}
+                      onClick={() => toggleNote(note)}
+                      className={`h-10 w-10 rounded-full border text-[10px] font-medium transition ${
+                        selectedNotes.includes(note)
+                          ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
+                          : "border-slate-700 bg-slate-900/45 text-slate-400 opacity-55"
+                      } hover:border-cyan-300 hover:text-cyan-100`}
+                    >
+                      {formatNoteDisplay(note)}
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
+        </section>
 
+        <section className="mt-3 grid items-start gap-3 md:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs uppercase tracking-[0.18em] text-cyan-200/80">Voice</p>
@@ -964,6 +959,53 @@ export default function Home() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export default function HomeLanding() {
+  return (
+    <div className="soundstage min-h-screen bg-slate-950 px-4 py-8 md:px-6">
+      <main className="mx-auto max-w-4xl rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-10">
+        <pre className="mb-6 text-center text-cyan-200/90">
+{`╔═══╗
+║● ●║
+║● ●║
+╚═══╝`}
+        </pre>
+
+        <h1 className="text-center text-3xl font-semibold tracking-tight text-slate-100 md:text-4xl">
+          frets.dev
+        </h1>
+
+        <div className="mt-6 space-y-4 text-sm leading-7 text-slate-300 md:text-base">
+          <p>
+            frets.dev exists to build the world&apos;s open source home for mastering the fretboard.
+          </p>
+          <p>
+            Learning guitar, bass, and other fretboard instruments should not depend on closed
+            platforms, abandoned apps, or expensive tools. The fretboard is a universal musical
+            language, and the tools to explore it should be just as open. frets.dev begins with a
+            simple belief: the best learning tools emerge when musicians and developers build them
+            together.
+          </p>
+          <p>
+            This project aims to grow into a global open source ecosystem of fretboard tools -
+            trainers, visualizers, practice systems, and experiments - all free, transparent, and
+            community-driven. If you love music, code, or both, frets.dev is a place to create
+            tools that help musicians everywhere understand the fretboard more deeply.
+          </p>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <a
+            href="/tool"
+            className="rounded-lg border border-cyan-300/60 bg-cyan-400/10 px-5 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+          >
+            Open Tools
+          </a>
+        </div>
+      </main>
     </div>
   );
 }
