@@ -999,7 +999,7 @@ export default function HomeLanding() {
 
         <div className="mt-8 flex justify-center">
           <a
-            href="/tool"
+            href="/tools"
             className="rounded-lg border border-cyan-300/60 bg-cyan-400/10 px-5 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
           >
             Open Tools

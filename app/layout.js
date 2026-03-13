@@ -12,9 +12,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Music Note Generator",
+  title: {
+    default: "frets.dev",
+    template: "%s | frets.dev",
+  },
   description:
-    "Free random music note generator for practicing note recognition on piano, guitar and other instruments.",
+    "Open source fretboard training tools. Practice note recognition with voice, metronome sync, and waveform feedback.",
+  applicationName: "frets.dev",
+  keywords: [
+    "fretboard",
+    "guitar",
+    "music trainer",
+    "note generator",
+    "ear training",
+    "open source",
+  ],
+  openGraph: {
+    title: "frets.dev",
+    description:
+      "Open source fretboard training tools with note generation, metronome control, and voice guidance.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "frets.dev",
+    description:
+      "Open source fretboard training tools with note generation, metronome control, and voice guidance.",
+  },
 };
 
 export default function RootLayout({ children }) {

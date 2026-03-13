@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# frets.dev
+
+Open source fretboard training tools built with Next.js.
+
+`frets.dev` starts with a note trainer focused on fast, repeatable practice:
+
+- random note generation
+- bilingual voice output (English and Portuguese - Brazil)
+- metronome with configurable beat count and shift
+- live waveform and cycle pointer feedback
+- note audio preloading for smoother playback
+
+## Routes
+
+- `/` - manifesto-style landing page
+- `/tools` - tools catalog page
+- `/fret-notes` - interactive fretboard note name trainer
+- `/api/tts` - TTS proxy endpoint used by the trainer
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run locally:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm run start
+```
 
-## Learn More
+## Deploy
 
-To learn more about Next.js, take a look at the following resources:
+This project is ready to deploy on Vercel with default Next.js settings.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js (App Router)
+- React
+- Tailwind CSS
+- Web Audio API
+- Browser Speech Synthesis API
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Issues and pull requests are welcome. Keep changes focused, test locally, and include clear descriptions of behavioral changes.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+No license file has been defined yet. Add a license before accepting external contributions.
