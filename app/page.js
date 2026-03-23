@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAppLanguage } from "./i18n-provider";
+import FloatingBackButton from "./components/floating-back-button";
 
 const STANDARD_NOTES = ["a", "b", "c", "d", "e", "f", "g"];
 const SHARP_NOTES = ["a#", "c#", "d#", "e#", "f#", "g#", "b#"];
@@ -185,6 +187,7 @@ function noteToSpokenText(note, language) {
 }
 
 export function ToolPage() {
+  const { tr } = useAppLanguage();
   const [timeInterval, setTimeInterval] = useState(() =>
     getStoredNumber("noteGenerator_timeInterval", 5),
   );
@@ -227,9 +230,6 @@ export function ToolPage() {
     })(),
   );
   const [allVoices, setAllVoices] = useState([]);
-  const [analyticsConsent, setAnalyticsConsent] = useState(() =>
-    typeof window === "undefined" ? "accepted" : localStorage.getItem("analyticsConsent"),
-  );
 
   const intervalRef = useRef(null);
   const lastPlayedNoteRef = useRef("");
@@ -240,8 +240,6 @@ export function ToolPage() {
   const audioCacheRef = useRef(new Map());
   const audioInflightRef = useRef(new Map());
   const cycleStartMsRef = useRef(0);
-
-  const isCookieBannerOpen = analyticsConsent !== "accepted" && analyticsConsent !== "declined";
 
   const availableVoices = useMemo(() => {
     if (language === "pt-BR") {
@@ -649,29 +647,30 @@ export function ToolPage() {
     };
   }, [clearMetronomeSchedule, stopNoteAudio]);
 
-  const consentChoice = (value) => {
-    localStorage.setItem("analyticsConsent", value);
-    setAnalyticsConsent(value);
-  };
-
   return (
     <div className="soundstage min-h-screen bg-slate-950 px-3 py-4 md:px-6">
       <main className="mx-auto max-w-[920px] rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-4">
         <header className="mb-4 border-b border-cyan-400/20 pb-3">
           <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
-            Music Note Generator
+            {tr("Music Note Generator", "Gerador de Notas Musicais")}
           </h1>
           <p className="mx-auto mt-1 max-w-3xl text-center text-xs text-slate-400">
-            Dark practice console for random notes, voice and metronome.
+            {tr("Dark practice console for random notes, voice and metronome.", "Console de estudo com tema escuro para notas aleatorias, voz e metronomo.")}
           </p>
         </header>
 
         <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3">
-          <p className="mb-3 text-xs uppercase tracking-[0.18em] text-cyan-200/80">Select Notes</p>
+          <p className="mb-3 text-xs uppercase tracking-[0.18em] text-cyan-200/80">{tr("Select Notes", "Selecionar notas")}</p>
           <div className="space-y-2">
             {NOTE_ROWS.map((row) => (
               <div key={row.label} className="rounded-xl border border-slate-700 bg-slate-950/70 p-2.5">
-                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-slate-400">{row.label}</p>
+                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-slate-400">
+                  {row.label === "Sharps"
+                    ? tr("Sharps", "Sustenidos")
+                    : row.label === "Natural Notes"
+                      ? tr("Natural Notes", "Notas naturais")
+                      : tr("Flats", "Bemois")}
+                </p>
                 <div className="grid grid-cols-7 gap-2">
                   {row.items.map((note) => (
                     <button
@@ -697,7 +696,7 @@ export function ToolPage() {
         <section className="mt-3 grid items-start gap-3 md:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.18em] text-cyan-200/80">Voice</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-cyan-200/80">{tr("Voice", "Voz")}</p>
               <label className="flex cursor-pointer items-center">
                 <input
                   type="checkbox"
@@ -709,7 +708,7 @@ export function ToolPage() {
                   }}
                   className="h-4 w-4 accent-cyan-400"
                 />
-                <span className="sr-only">Enable text-to-speech</span>
+                <span className="sr-only">{tr("Enable text-to-speech", "Ativar texto para fala")}</span>
               </label>
             </div>
             <div className="space-y-2">
@@ -725,8 +724,8 @@ export function ToolPage() {
                 }}
                 className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 outline-none transition focus:border-cyan-300"
               >
-                <option value="en">English</option>
-                <option value="pt-BR">Português (Brasil)</option>
+                <option value="en">{tr("English", "Ingles")}</option>
+                <option value="pt-BR">{tr("Portuguese (Brazil)", "Portugues (Brasil)")}</option>
               </select>
 
               {textToSpeechEnabled && (
@@ -740,7 +739,7 @@ export function ToolPage() {
                     }}
                     className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 outline-none transition focus:border-cyan-300"
                   >
-                    <option value="default">Default Voice</option>
+                    <option value="default">{tr("Default Voice", "Voz padrao")}</option>
                     {availableVoices.map((voice) => (
                       <option key={voice.name} value={voice.name}>
                         {voice.name}
@@ -770,7 +769,7 @@ export function ToolPage() {
                     }}
                     className="w-full rounded-lg border border-cyan-300/60 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-200 transition hover:bg-cyan-300/20"
                   >
-                    Test voice
+                    {tr("Test voice", "Testar voz")}
                   </button>
                 </div>
               )}
@@ -778,10 +777,10 @@ export function ToolPage() {
           </div>
 
           <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3">
-            <p className="mb-3 text-xs uppercase tracking-[0.18em] text-cyan-200/80">Metronome</p>
+            <p className="mb-3 text-xs uppercase tracking-[0.18em] text-cyan-200/80">{tr("Metronome", "Metronomo")}</p>
             <div className="space-y-2">
               <label htmlFor="interval" className="text-[11px] uppercase tracking-wide text-slate-300">
-                Time interval (seconds)
+                {tr("Time interval (seconds)", "Intervalo de tempo (segundos)")}
               </label>
               <input
                 id="interval"
@@ -806,7 +805,7 @@ export function ToolPage() {
                   }}
                   className="h-4 w-4 accent-cyan-400"
                 />
-                Use metronome
+                {tr("Use metronome", "Usar metronomo")}
               </label>
               <label className="flex cursor-pointer items-center gap-2 text-xs uppercase tracking-wide text-slate-300">
                 <input
@@ -820,11 +819,11 @@ export function ToolPage() {
                   disabled={!metronomeEnabled}
                   className="h-4 w-4 accent-cyan-400"
                 />
-                Use head tone
+                {tr("Use head tone", "Usar tom de cabeca")}
               </label>
 
               <label htmlFor="beats" className="text-[11px] uppercase tracking-wide text-slate-300">
-                Beats inside interval
+                {tr("Beats inside interval", "Batidas dentro do intervalo")}
               </label>
               <select
                 id="beats"
@@ -846,7 +845,7 @@ export function ToolPage() {
               </select>
 
               <label htmlFor="metronomeShift" className="text-[11px] uppercase tracking-wide text-slate-300">
-                Metronome shift (seconds)
+                {tr("Metronome shift (seconds)", "Deslocamento do metronomo (segundos)")}
               </label>
               <input
                 id="metronomeShift"
@@ -865,14 +864,14 @@ export function ToolPage() {
 
         <section className="mt-3 grid items-center gap-2 rounded-2xl border border-fuchsia-400/20 bg-slate-900/70 p-3 md:grid-cols-[1fr_180px]">
           <div className="rounded-xl border border-fuchsia-400/30 bg-gradient-to-br from-slate-900 to-slate-950 p-3 text-center shadow-inner shadow-black/30">
-            <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-fuchsia-200/70">Current Note</p>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-fuchsia-200/70">{tr("Current Note", "Nota atual")}</p>
             <div className="flex min-h-20 items-center justify-center">
               {currentNote ? (
                 <p className="animate-pop text-5xl font-black tracking-tight text-cyan-100 md:text-6xl">
                   {formatNoteDisplay(currentNote)}
                 </p>
               ) : (
-                <p className="text-sm text-slate-500">Press Go to start</p>
+                <p className="text-sm text-slate-500">{tr("Press Go to start", "Pressione Iniciar para comecar")}</p>
               )}
             </div>
             <div className="mt-2 rounded-lg border border-cyan-300/20 bg-slate-950/60 p-1.5">
@@ -911,7 +910,7 @@ export function ToolPage() {
                 />
               </div>
               <p className="mt-1 text-[10px] text-slate-500">
-                Voice span {(lastSpeechDurationSec || 0).toFixed(1)}s / {timeInterval.toFixed(1)}s
+                {tr("Voice span", "Duracao da voz")} {(lastSpeechDurationSec || 0).toFixed(1)}s / {timeInterval.toFixed(1)}s
               </p>
             </div>
           </div>
@@ -921,49 +920,25 @@ export function ToolPage() {
               disabled={isRunning || isPreloadingAudio || selectedNotes.length === 0}
               className="rounded-lg border border-emerald-400/60 bg-emerald-400/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/30 disabled:opacity-40"
             >
-              {isPreloadingAudio ? "Loading..." : "Go"}
+              {isPreloadingAudio ? tr("Loading...", "Carregando...") : tr("Go", "Iniciar")}
             </button>
             <button
               onClick={stopGenerator}
               disabled={!isRunning}
               className="rounded-lg border border-pink-400/60 bg-pink-400/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-pink-100 transition hover:bg-pink-400/30 disabled:opacity-40"
             >
-              Stop
+              {tr("Stop", "Parar")}
             </button>
           </div>
         </section>
       </main>
-
-      {isCookieBannerOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-cyan-300/30 bg-slate-950/95 px-4 py-3 text-slate-200 backdrop-blur-md">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm">
-              <strong className="text-cyan-300">🍪 We use cookies</strong>
-              {" "}
-              This app can use analytics consent storage (no personal data).
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => consentChoice("accepted")}
-                className="rounded-lg border border-emerald-400/50 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100"
-              >
-                Accept
-              </button>
-              <button
-                onClick={() => consentChoice("declined")}
-                className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300"
-              >
-                Decline
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <FloatingBackButton href="/tools" />
     </div>
   );
 }
 
 export default function HomeLanding() {
+  const { tr } = useAppLanguage();
   return (
     <div className="soundstage min-h-screen bg-slate-950 px-4 py-8 md:px-6">
       <main className="mx-auto max-w-4xl rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-10">
@@ -978,22 +953,24 @@ export default function HomeLanding() {
           frets.dev
         </h1>
 
-        <div className="mt-6 space-y-4 text-sm leading-7 text-slate-300 md:text-base">
+        <div className="mt-6 space-y-4 text-justify text-sm leading-7 text-slate-300 md:text-base">
           <p>
-            frets.dev exists to build the world&apos;s open source home for mastering the fretboard.
+            {tr(
+              "frets.dev exists to build a global open source community dedicated to mastering the instrument fretboard.",
+              "frets.dev existe para construir uma comunidade open source mundial dedicada a dominar o braço do instrumento.",
+            )}
           </p>
           <p>
-            Learning guitar, bass, and other fretboard instruments should not depend on closed
-            platforms, abandoned apps, or expensive tools. The fretboard is a universal musical
-            language, and the tools to explore it should be just as open. frets.dev begins with a
-            simple belief: the best learning tools emerge when musicians and developers build them
-            together.
+            {tr(
+              "Learning guitar, bass, and similar instruments should not depend on closed platforms, abandoned apps, or expensive tools. The fretboard of string instruments is, in itself, a universal musical language, and the tools to explore it should be equally open. frets.dev begins with a simple belief: the best learning tools emerge when musicians and developers build together.",
+              "Aprender guitarra, baixo e outros instrumentos semelhantes não deveria depender de plataformas fechadas, apps abandonados ou ferramentas caras. O braço dos instrumentos de cordas é por si mesmo uma linguagem musical universal, e as ferramentas para explorá-lo devem ser igualmente abertas. frets.dev começa com uma crença simples: as melhores ferramentas de aprendizado surgem quando músicos e desenvolvedores constroem juntos.",
+            )}
           </p>
           <p>
-            This project aims to grow into a global open source ecosystem of fretboard tools -
-            trainers, visualizers, practice systems, and experiments - all free, transparent, and
-            community-driven. If you love music, code, or both, frets.dev is a place to create
-            tools that help musicians everywhere understand the fretboard more deeply.
+            {tr(
+              "This project aims to grow into a global, open source, multilingual ecosystem of fretboard tools — trainers, visualizers, practice systems, and experiments — all free, transparent, and community-driven. If you love music, code, or both, frets.dev is a place to create tools that help musicians around the world understand the fretboard more deeply.",
+              "Este projeto busca crescer como um ecossistema global open source e multilíngue de ferramentas para o braço — treinadores, visualizadores, sistemas de prática e experimentos — tudo gratuito, transparente e guiado pela comunidade. Se você ama música, código ou ambos, frets.dev é um lugar para criar ferramentas que ajudam músicos do mundo inteiro a entender o braço com mais profundidade.",
+            )}
           </p>
         </div>
 
@@ -1002,7 +979,7 @@ export default function HomeLanding() {
             href="/tools"
             className="rounded-lg border border-cyan-300/60 bg-cyan-400/10 px-5 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
           >
-            Open Tools
+            {tr("Explore now >", "Explorar agora >")}
           </a>
         </div>
       </main>

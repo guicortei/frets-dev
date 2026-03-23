@@ -14,7 +14,7 @@ Open source fretboard training tools built with Next.js.
 
 - `/` - manifesto-style landing page
 - `/tools` - tools catalog page
-- `/fret-notes` - interactive fretboard note name trainer
+- `/read-and-locate` - interactive fretboard note name trainer
 - `/name-the-note` - note memory trainer
 - `/api/tts` - TTS proxy endpoint used by the trainer
 

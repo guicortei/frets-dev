@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAppLanguage } from "../i18n-provider";
+import FloatingBackButton from "../components/floating-back-button";
 
 const CHROMATIC_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const NOTE_FILTER_ROWS = [
@@ -91,7 +93,7 @@ const SAMPLE_PROFILE_OPTIONS = [
   {
     id: "freepats-autopitch",
     label: "FreePats Spanish Classical Guitar + Auto-pitch for missing notes",
-    sourceLabel: "Fonte",
+    sourceLabel: "Source",
     sourceUrl: "https://github.com/freepats/spanish-classical-guitar",
   },
 ];
@@ -423,6 +425,14 @@ function buildEligibleTargets(
 }
 
 export default function HeatMapMemoryPage() {
+  const {
+    detectedLocale,
+    languageMode,
+    manualLocale,
+    setMode,
+    setManualLocale,
+    tr,
+  } = useAppLanguage();
   const [isRunning, setIsRunning] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [showAllNotes, setShowAllNotes] = useState(false);
@@ -435,7 +445,7 @@ export default function HeatMapMemoryPage() {
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [showDrawRulesModal, setShowDrawRulesModal] = useState(false);
   const [showResetSettingsConfirmModal, setShowResetSettingsConfirmModal] = useState(false);
-  const [settingsTab, setSettingsTab] = useState("draw-rules");
+  const [settingsTab, setSettingsTab] = useState("general");
   const [sampleProfile, setSampleProfile] = useState(SAMPLE_PROFILE_OPTIONS[0].id);
   const [drawRules, setDrawRules] = useState(DEFAULT_DRAW_RULES);
   const [enabledNoteRows, setEnabledNoteRows] = useState({
@@ -1258,7 +1268,7 @@ export default function HeatMapMemoryPage() {
     setHeatMapPlacement("separate");
     setErrorRetryMode("1");
     setSampleProfile(SAMPLE_PROFILE_OPTIONS[0].id);
-    setSettingsTab("draw-rules");
+    setSettingsTab("general");
     setRetryContext({ targetId: null, wrongRepeatsDone: 0 });
   }, []);
 
@@ -1310,18 +1320,20 @@ export default function HeatMapMemoryPage() {
         applyStoredSettings(payload.state?.settings);
       }
       if (showStatus) {
-        setDriveSyncMessage(payload?.state ? "Data loaded from Google Drive." : "No backup found on Google Drive.");
+        setDriveSyncMessage(payload?.state
+          ? tr("Data loaded from Google Drive.", "Dados carregados do Google Drive.")
+          : tr("No backup found on Google Drive.", "Nenhum backup encontrado no Google Drive."));
       }
       return true;
     } catch {
       if (showStatus) {
-        setDriveSyncMessage("Could not load data from Google Drive.");
+        setDriveSyncMessage(tr("Could not load data from Google Drive.", "Nao foi possivel carregar os dados do Google Drive."));
       }
       return false;
     } finally {
       setIsDriveSyncBusy(false);
     }
-  }, [applyStoredSettings]);
+  }, [applyStoredSettings, tr]);
 
   const pushStateToDrive = useCallback(async (payloadOverride = null, showStatus = true) => {
     try {
@@ -1337,18 +1349,18 @@ export default function HeatMapMemoryPage() {
         throw new Error(data?.error || "Failed to save data to Google Drive.");
       }
       if (showStatus) {
-        setDriveSyncMessage("Data saved to Google Drive.");
+        setDriveSyncMessage(tr("Data saved to Google Drive.", "Dados salvos no Google Drive."));
       }
       return true;
     } catch {
       if (showStatus) {
-        setDriveSyncMessage("Could not save data to Google Drive.");
+        setDriveSyncMessage(tr("Could not save data to Google Drive.", "Nao foi possivel salvar os dados no Google Drive."));
       }
       return false;
     } finally {
       setIsDriveSyncBusy(false);
     }
-  }, [buildDriveStatePayload]);
+  }, [buildDriveStatePayload, tr]);
 
   const loadGoogleProfile = useCallback(async () => {
     try {
@@ -1382,12 +1394,12 @@ export default function HeatMapMemoryPage() {
       await fetch("/api/google/auth/disconnect", { method: "POST" });
       setGoogleDriveConnected(false);
       setGoogleProfile(null);
-      setDriveSyncMessage("Google account disconnected.");
+      setDriveSyncMessage(tr("Google account disconnected.", "Conta Google desconectada."));
       setShowAccountMenu(false);
     } finally {
       setIsDriveSyncBusy(false);
     }
-  }, []);
+  }, [tr]);
 
   useEffect(() => () => {
     sampleLoadingRef.current.clear();
@@ -1444,21 +1456,21 @@ export default function HeatMapMemoryPage() {
     if (!authState) return;
 
     if (authState === "connected") {
-      setDriveSyncMessage("Google account connected successfully.");
+      setDriveSyncMessage(tr("Google account connected successfully.", "Conta Google conectada com sucesso."));
       setGoogleDriveConnected(true);
       loadGoogleProfile();
       pullStateFromDrive(true);
     } else if (authState === "denied") {
-      setDriveSyncMessage("Google connection canceled.");
+      setDriveSyncMessage(tr("Google connection canceled.", "Conexao com Google cancelada."));
     } else {
       const detailSuffix = authDetail ? ` (${authDetail})` : "";
-      setDriveSyncMessage(`Failed to connect to Google Drive.${detailSuffix}`);
+      setDriveSyncMessage(`${tr("Failed to connect to Google Drive.", "Falha ao conectar com Google Drive.")}${detailSuffix}`);
     }
 
     url.searchParams.delete("googleAuth");
     url.searchParams.delete("googleAuthDetail");
     window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [loadGoogleProfile, pullStateFromDrive]);
+  }, [loadGoogleProfile, pullStateFromDrive, tr]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1768,17 +1780,17 @@ export default function HeatMapMemoryPage() {
                 <circle cx="12" cy="12" r="2.6" strokeWidth="1.8" />
                 {!showAllNotes && <path strokeWidth="1.8" d="m4 20 16-16" />}
               </svg>
-              {showAllNotes ? "Hide notes" : "Show notes"}
+              {showAllNotes ? tr("Hide notes", "Ocultar notas") : tr("Show notes", "Exibir notas")}
             </button>
             <button
               type="button"
               onClick={() => {
-                setSettingsTab("draw-rules");
+                setSettingsTab("general");
                 setShowDrawRulesModal(true);
               }}
               className="inline-flex items-center gap-1 rounded-md border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-300/20"
             >
-              Settings
+              {tr("Settings", "Configuracoes")}
             </button>
             <div ref={accountMenuRef} className="relative">
               <button
@@ -1873,20 +1885,20 @@ export default function HeatMapMemoryPage() {
                         onClick={disconnectGoogleDrive}
                         className="w-full rounded border border-rose-500/50 bg-rose-500/15 px-2 py-1.5 text-left text-xs text-rose-100 transition hover:bg-rose-500/25"
                       >
-                        Disconnect account
+                        {tr("Disconnect account", "Desconectar conta")}
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <p className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-[11px] text-slate-300">
-                      Connect your Google account to enable automatic backup on Drive.
+                      {tr("Connect your Google account to enable automatic backup on Drive.", "Conecte sua conta Google para ativar o backup automatico no Drive.")}
                       </p>
                       <button
                         type="button"
                         onClick={startGoogleOAuth}
                         className="w-full rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1.5 text-left text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
                       >
-                      Connect Google account
+                      {tr("Connect Google account", "Conectar conta Google")}
                       </button>
                     </div>
                   )}
@@ -1902,7 +1914,7 @@ export default function HeatMapMemoryPage() {
                 disabled={allowedPitchClasses.size === 0}
                 className="rounded-md border border-emerald-400/60 bg-emerald-400/20 px-2 py-1 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Start
+                {tr("Start", "Iniciar")}
               </button>
               <button
                 type="button"
@@ -1910,11 +1922,11 @@ export default function HeatMapMemoryPage() {
                 disabled={!isRunning && !isAdvancing}
                 className="rounded-md border border-rose-400/60 bg-rose-400/20 px-2 py-1 text-[11px] font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Stop
+                {tr("Stop", "Parar")}
               </button>
             </div>
             <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
-              Name the Note
+              {tr("Name the Note", "Nomeie a Nota")}
             </h1>
           </div>
         </header>
@@ -2355,7 +2367,7 @@ export default function HeatMapMemoryPage() {
             )}
             {allowedPitchClasses.size === 0 && (
               <p className="text-xs text-rose-300">
-                Enable at least one note filter (Accidentals or Naturals) for the randomizer.
+                {tr("Enable at least one note filter (Accidentals or Naturals) for the randomizer.", "Ative ao menos um filtro de notas (Acidentes ou Naturais) para o sorteador.")}
               </p>
             )}
           </div>
@@ -2364,20 +2376,20 @@ export default function HeatMapMemoryPage() {
         <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3 md:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-100">
-              Results
+              {tr("Results", "Resultados")}
             </h2>
             <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-100">
               <span className="rounded border border-slate-600 bg-slate-800/70 px-2 py-1">
                 Total: <strong>{regionTotals.total}</strong>
               </span>
               <span className="rounded border border-emerald-500/35 bg-emerald-500/15 px-2 py-1">
-                Correct: <strong>{regionTotals.correct}</strong> ({totalPercent.toFixed(0)}%)
+                {tr("Correct:", "Acertos:")} <strong>{regionTotals.correct}</strong> ({totalPercent.toFixed(0)}%)
               </span>
               <span className="rounded border border-rose-500/35 bg-rose-500/15 px-2 py-1">
-                Wrong: <strong>{regionTotals.wrong}</strong> ({wrongPercent.toFixed(0)}%)
+                {tr("Wrong:", "Erros:")} <strong>{regionTotals.wrong}</strong> ({wrongPercent.toFixed(0)}%)
               </span>
               <span className="rounded border border-cyan-500/35 bg-cyan-500/15 px-2 py-1">
-                Overall average correct time: <strong>{overallAvgCorrectSec === null ? "-" : `${overallAvgCorrectSec.toFixed(1)}s`}</strong>
+                {tr("Overall average correct time:", "Tempo medio geral de acerto:")} <strong>{overallAvgCorrectSec === null ? "-" : `${overallAvgCorrectSec.toFixed(1)}s`}</strong>
               </span>
             </div>
           </div>
@@ -2550,15 +2562,15 @@ export default function HeatMapMemoryPage() {
               <table className="mx-auto min-w-[980px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-700 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-2 py-2">String</th>
-                  <th className="px-2 py-2">Fret</th>
-                  <th className="px-2 py-2">Note</th>
-                  <th className="px-2 py-2">Test count</th>
-                  <th className="px-2 py-2">Correct</th>
-                  <th className="px-2 py-2">Wrong</th>
-                  <th className="px-2 py-2">% accuracy</th>
-                  <th className="px-2 py-2">Last 5 correct</th>
-                  <th className="px-2 py-2">Average correct time (last 5)</th>
+                  <th className="px-2 py-2">{tr("String", "Corda")}</th>
+                  <th className="px-2 py-2">{tr("Fret", "Casa")}</th>
+                  <th className="px-2 py-2">{tr("Note", "Nota")}</th>
+                  <th className="px-2 py-2">{tr("Test count", "Qtd. de testes")}</th>
+                  <th className="px-2 py-2">{tr("Correct", "Acertos")}</th>
+                  <th className="px-2 py-2">{tr("Wrong", "Erros")}</th>
+                  <th className="px-2 py-2">{tr("% accuracy", "% de acerto")}</th>
+                  <th className="px-2 py-2">{tr("Last 5 correct", "Ult. 5 acertos")}</th>
+                  <th className="px-2 py-2">{tr("Average correct time (last 5)", "Tempo medio de acerto (ult. 5)")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2655,6 +2667,7 @@ export default function HeatMapMemoryPage() {
         </section>
 
       </main>
+      <FloatingBackButton href="/tools" />
       {showGoogleConnectSuggestionModal && !googleDriveConnected && (
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-3"
@@ -2663,13 +2676,13 @@ export default function HeatMapMemoryPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Connect Google account"
+            aria-label={tr("Connect Google account", "Conectar conta Google")}
             className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-slate-900/95 p-4 shadow-2xl shadow-black/70"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className="text-sm font-semibold text-cyan-100">Enable auto-save</h3>
+            <h3 className="text-sm font-semibold text-cyan-100">{tr("Enable auto-save", "Ative o salvamento automatico")}</h3>
             <p className="mt-2 text-xs text-slate-300">
-              Connect your Google account to enable automatic backup in Google Drive and avoid losing your progress.
+              {tr("Connect your Google account to enable automatic backup in Google Drive and avoid losing your progress.", "Conecte sua conta Google para ativar o backup automatico no Google Drive e evitar perda de progresso.")}
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -2677,14 +2690,14 @@ export default function HeatMapMemoryPage() {
                 onClick={() => setShowGoogleConnectSuggestionModal(false)}
                 className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-slate-700"
               >
-                Not now
+                {tr("Not now", "Agora nao")}
               </button>
               <button
                 type="button"
                 onClick={startGoogleOAuth}
                 className="rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
               >
-                Connect Google account
+                {tr("Connect Google account", "Conectar conta Google")}
               </button>
             </div>
           </div>
@@ -2701,12 +2714,12 @@ export default function HeatMapMemoryPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Settings"
+            aria-label={tr("Settings", "Configuracoes")}
             className="w-full max-w-4xl rounded-xl border border-cyan-300/30 bg-slate-900/95 p-4 shadow-2xl shadow-black/70"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-cyan-100">Settings</h2>
+              <h2 className="text-sm font-semibold text-cyan-100">{tr("Settings", "Configuracoes")}</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -2715,21 +2728,32 @@ export default function HeatMapMemoryPage() {
                 }}
                 className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-slate-700"
               >
-                Close
+                {tr("Close", "Fechar")}
               </button>
             </div>
             <div className="flex gap-3">
               <aside className="flex w-52 shrink-0 flex-col rounded-lg border border-slate-700 bg-slate-950/70 p-2">
                 <button
                   type="button"
-                  onClick={() => setSettingsTab("draw-rules")}
+                  onClick={() => setSettingsTab("general")}
                   className={`mb-1 w-full rounded px-2 py-1 text-left text-xs transition ${
+                    settingsTab === "general"
+                      ? "border border-cyan-300/40 bg-cyan-400/10 text-cyan-100"
+                      : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
+                  }`}
+                >
+                  {tr("General", "Geral")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("draw-rules")}
+                  className={`w-full rounded px-2 py-1 text-left text-xs transition ${
                     settingsTab === "draw-rules"
                       ? "border border-cyan-300/40 bg-cyan-400/10 text-cyan-100"
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  Draw Rules
+                  {tr("Draw Rules", "Regras de Sorteio")}
                 </button>
                 <button
                   type="button"
@@ -2740,7 +2764,7 @@ export default function HeatMapMemoryPage() {
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  Fretboard
+                  {tr("Fretboard", "Braco")}
                 </button>
                 <button
                   type="button"
@@ -2751,7 +2775,7 @@ export default function HeatMapMemoryPage() {
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  Answer Pad
+                  {tr("Answer Pad", "Pad de Resposta")}
                 </button>
                 <button
                   type="button"
@@ -2762,7 +2786,7 @@ export default function HeatMapMemoryPage() {
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  Performance Map
+                  {tr("Performance Map", "Mapa de Desempenho")}
                 </button>
                 <button
                   type="button"
@@ -2773,7 +2797,7 @@ export default function HeatMapMemoryPage() {
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  Sound
+                  {tr("Sound", "Som")}
                 </button>
                 <button
                   type="button"
@@ -2784,17 +2808,55 @@ export default function HeatMapMemoryPage() {
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  Auto Save
+                  {tr("Auto Save", "Salvamento automatico")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowResetSettingsConfirmModal(true)}
                   className="mt-3 rounded border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-left text-xs text-rose-200 transition hover:bg-rose-500/20"
                 >
-                  Reset settings
+                  {tr("Reset settings", "Redefinir configuracoes")}
                 </button>
               </aside>
               <div className="min-h-[260px] flex-1 rounded-lg border border-slate-700 bg-slate-950/50 p-3">
+                {settingsTab === "general" && (
+                  <div className="space-y-2">
+                    <label className="flex cursor-pointer items-start gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
+                      <input
+                        type="checkbox"
+                        checked={languageMode === "auto"}
+                        onChange={(event) => {
+                          setMode(event.target.checked ? "auto" : "manual");
+                        }}
+                        className="mt-[2px]"
+                      />
+                      {tr(
+                        "Auto-detect user language based on Browser.",
+                        "Detectar automaticamente o idioma do usuario com base no Browser.",
+                      )}
+                    </label>
+                    <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
+                      <span>{tr("Language", "Idioma")}</span>
+                      <select
+                        value={languageMode === "auto" ? detectedLocale : manualLocale}
+                        onChange={(event) => setManualLocale(event.target.value)}
+                        disabled={languageMode === "auto"}
+                        className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <option value="en">{tr("English", "Ingles")}</option>
+                        <option value="pt-BR">{tr("Portuguese (Brazil)", "Portugues (Brasil)")}</option>
+                      </select>
+                    </div>
+                    {languageMode === "auto" && (
+                      <p className="text-[11px] text-slate-400">
+                        {tr("Detected language:", "Idioma detectado:")}{" "}
+                        <span className="text-cyan-200">
+                          {detectedLocale === "pt-BR" ? tr("Portuguese (Brazil)", "Portugues (Brasil)") : tr("English", "Ingles")}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
                 {settingsTab === "draw-rules" && (
                   <div className="space-y-2">
                     <label className="flex cursor-pointer items-start gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
@@ -2806,7 +2868,7 @@ export default function HeatMapMemoryPage() {
                         }}
                         className="mt-[2px]"
                       />
-                      Never draw the same note twice in a row.
+                      {tr("Never draw the same note twice in a row.", "Nunca sortear a mesma nota em sequencia.")}
                     </label>
                     <label className="flex items-start gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
                       <input
@@ -2818,7 +2880,7 @@ export default function HeatMapMemoryPage() {
                         className="mt-[2px]"
                       />
                       <span className="flex flex-wrap items-center gap-1">
-                        <span>In</span>
+                        <span>{tr("In", "Em")}</span>
                         <input
                           type="number"
                           min={0}
@@ -2839,7 +2901,7 @@ export default function HeatMapMemoryPage() {
                           }}
                           className="h-6 w-14 rounded border border-cyan-300/30 bg-slate-950/75 px-1 text-[11px] text-cyan-100 outline-none"
                         />
-                        <span>% of the time, draw only from the</span>
+                        <span>{tr("% of the time, draw only from the", "% das vezes, sortear apenas entre as")}</span>
                         <input
                           type="number"
                           min={1}
@@ -2861,7 +2923,7 @@ export default function HeatMapMemoryPage() {
                           className="h-6 w-14 rounded border border-cyan-300/30 bg-slate-950/75 px-1 text-[11px] text-cyan-100 outline-none"
                         />
                         <span>
-                          notes with the highest response time.
+                          {tr("notes with the highest response time.", "notas com maior tempo de resposta.")}
                         </span>
                       </span>
                     </label>
@@ -2874,7 +2936,7 @@ export default function HeatMapMemoryPage() {
                         }}
                         className="mt-[2px]"
                       />
-                      Prioritize notes that still have no correct answers.
+                      {tr("Prioritize notes that still have no correct answers.", "Priorizar notas que ainda nao tiveram nenhum acerto.")}
                     </label>
                     <label className="flex cursor-pointer items-start gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
                       <input
@@ -2885,7 +2947,7 @@ export default function HeatMapMemoryPage() {
                         }}
                         className="mt-[2px]"
                       />
-                      Do not draw octaves in sequence.
+                      {tr("Do not draw octaves in sequence.", "Nao sortear oitavas em sequencia.")}
                     </label>
                     <label className="flex cursor-pointer items-start gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
                       <input
@@ -2896,7 +2958,7 @@ export default function HeatMapMemoryPage() {
                         }}
                         className="mt-[2px]"
                       />
-                      Draw natural notes
+                      {tr("Draw natural notes", "Sortear notas naturais")}
                     </label>
                     <label className="flex cursor-pointer items-start gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
                       <input
@@ -2907,7 +2969,7 @@ export default function HeatMapMemoryPage() {
                         }}
                         className="mt-[2px]"
                       />
-                      Draw accidental notes
+                      {tr("Draw accidental notes", "Sortear notas acidentais")}
                     </label>
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
                       <label className="flex cursor-pointer items-center gap-2">
@@ -2922,7 +2984,7 @@ export default function HeatMapMemoryPage() {
                             }
                           }}
                         />
-                        Repeat on mistakes
+                        {tr("Repeat on mistakes", "Insistir no erro")}
                       </label>
                       <select
                         value={errorRetryMode}
@@ -2930,10 +2992,10 @@ export default function HeatMapMemoryPage() {
                         disabled={!drawRules.insistOnError}
                         className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <option value="1">1 time</option>
-                        <option value="2">2 times</option>
-                        <option value="3">3 times</option>
-                        <option value="until-correct">until correct</option>
+                        <option value="1">{tr("1 time", "1 vez")}</option>
+                        <option value="2">{tr("2 times", "2 vezes")}</option>
+                        <option value="3">{tr("3 times", "3 vezes")}</option>
+                        <option value="until-correct">{tr("until correct", "ate acertar")}</option>
                       </select>
                     </div>
                   </div>
@@ -2942,7 +3004,7 @@ export default function HeatMapMemoryPage() {
                 {settingsTab === "fretboard" && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
-                      <span>Length</span>
+                      <span>{tr("Length", "Comprimento")}</span>
                       <select
                         value={visibleMaxFret}
                         onChange={(event) => {
@@ -2964,16 +3026,16 @@ export default function HeatMapMemoryPage() {
                       </select>
                     </div>
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
-                      <span>Width</span>
+                      <span>{tr("Width", "Largura")}</span>
                       <select
                         value={fretboardHeightPreset}
                         onChange={(event) => setFretboardHeightPreset(event.target.value)}
                         className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none"
                       >
-                        <option value="narrow">Narrow</option>
-                        <option value="medium">Medium</option>
-                        <option value="wide">Wide</option>
-                        <option value="extra-wide">Extra wide</option>
+                        <option value="narrow">{tr("Narrow", "Estreito")}</option>
+                        <option value="medium">{tr("Medium", "Medio")}</option>
+                        <option value="wide">{tr("Wide", "Largo")}</option>
+                        <option value="extra-wide">{tr("Extra wide", "Extra largo")}</option>
                       </select>
                     </div>
                   </div>
@@ -2982,14 +3044,14 @@ export default function HeatMapMemoryPage() {
                 {settingsTab === "response-pad" && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
-                      <span>Pad format</span>
+                      <span>{tr("Pad format", "Formato do pad")}</span>
                       <select
                         value={responsePadMode}
                         onChange={(event) => setResponsePadMode(event.target.value)}
                         className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none"
                       >
-                        <option value="table">Table</option>
-                        <option value="keyboard">Keyboard</option>
+                        <option value="table">{tr("Table", "Tabela")}</option>
+                        <option value="keyboard">{tr("Keyboard", "Teclado")}</option>
                       </select>
                     </div>
                   </div>
@@ -3007,41 +3069,41 @@ export default function HeatMapMemoryPage() {
                           if (next) setShowAllNotes(false);
                         }}
                       />
-                      Show map
+                      {tr("Show map", "Mostrar mapa")}
                     </label>
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
-                      <span>Result type</span>
+                      <span>{tr("Result type", "Tipo de resultado")}</span>
                       <select
                         value={heatMapMetric}
                         onChange={(event) => setHeatMapMetric(event.target.value)}
                         className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none"
                       >
-                        <option value="tests">Tests</option>
-                        <option value="accuracy">% accuracy</option>
-                        <option value="responseTime">Avg. time</option>
+                        <option value="tests">{tr("Tests", "Testes")}</option>
+                        <option value="accuracy">{tr("% accuracy", "% Acerto")}</option>
+                        <option value="responseTime">{tr("Avg. time", "Tempo med.")}</option>
                       </select>
                     </div>
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
-                      <span>Format</span>
+                      <span>{tr("Format", "Formato")}</span>
                       <select
                         value={heatMapDisplayMode}
                         onChange={(event) => setHeatMapDisplayMode(event.target.value)}
                         className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none"
                       >
-                        <option value="number-color">Number and color</option>
-                        <option value="number">Number</option>
-                        <option value="color">Color</option>
+                        <option value="number-color">{tr("Number and color", "Numero e cor")}</option>
+                        <option value="number">{tr("Number", "Numero")}</option>
+                        <option value="color">{tr("Color", "Cor")}</option>
                       </select>
                     </div>
                     <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
-                      <span>Placement</span>
+                      <span>{tr("Placement", "Localizacao")}</span>
                       <select
                         value={heatMapPlacement}
                         onChange={(event) => setHeatMapPlacement(event.target.value)}
                         className="rounded border border-cyan-300/30 bg-slate-950/75 px-1.5 py-0.5 text-[10px] text-cyan-100 outline-none"
                       >
-                        <option value="overlay">Same fretboard</option>
-                        <option value="separate">Separate fretboard</option>
+                        <option value="overlay">{tr("Same fretboard", "Mesmo braco")}</option>
+                        <option value="separate">{tr("Separate fretboard", "Outro braco")}</option>
                       </select>
                     </div>
                   </div>
@@ -3082,7 +3144,7 @@ export default function HeatMapMemoryPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span>Google Drive:</span>
                         <span className={`rounded px-1.5 py-0.5 text-[10px] ${googleDriveConnected ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-700/60 text-slate-300"}`}>
-                          {googleDriveConnected ? "Connected" : "Disconnected"}
+                          {googleDriveConnected ? tr("Connected", "Conectado") : tr("Disconnected", "Desconectado")}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -3092,7 +3154,7 @@ export default function HeatMapMemoryPage() {
                           disabled={isDriveSyncBusy}
                           className="rounded border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[10px] font-semibold text-cyan-100 transition hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {googleDriveConnected ? "Reconnect Google account" : "Connect Google account"}
+                          {googleDriveConnected ? tr("Reconnect Google account", "Reconectar conta Google") : tr("Connect Google account", "Conectar conta Google")}
                         </button>
                         <button
                           type="button"
@@ -3100,7 +3162,7 @@ export default function HeatMapMemoryPage() {
                           disabled={!googleDriveConnected || isDriveSyncBusy}
                           className="rounded border border-slate-500/50 bg-slate-800 px-2 py-1 text-[10px] text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Download Drive backup
+                          {tr("Download Drive backup", "Baixar backup do Drive")}
                         </button>
                         <button
                           type="button"
@@ -3108,7 +3170,7 @@ export default function HeatMapMemoryPage() {
                           disabled={!googleDriveConnected || isDriveSyncBusy}
                           className="rounded border border-slate-500/50 bg-slate-800 px-2 py-1 text-[10px] text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Save backup to Drive
+                          {tr("Save backup to Drive", "Salvar backup no Drive")}
                         </button>
                         <button
                           type="button"
@@ -3116,11 +3178,11 @@ export default function HeatMapMemoryPage() {
                           disabled={!googleDriveConnected || isDriveSyncBusy}
                           className="rounded border border-rose-500/40 bg-rose-500/15 px-2 py-1 text-[10px] text-rose-100 transition hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Disconnect
+                          {tr("Disconnect", "Desconectar")}
                         </button>
                       </div>
                       <p className="text-[10px] text-slate-400">
-                        Auto-sync is active while connected.
+                        {tr("Auto-sync is active while connected.", "Sincronizacao automatica ativa quando conectado.")}
                       </p>
                       {driveSyncMessage ? (
                         <p className="text-[10px] text-cyan-200">{driveSyncMessage}</p>
@@ -3141,13 +3203,13 @@ export default function HeatMapMemoryPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Confirm reset settings"
+            aria-label={tr("Confirm reset settings", "Confirmar redefinicao de configuracoes")}
             className="w-full max-w-md rounded-xl border border-rose-400/30 bg-slate-900/95 p-4 shadow-2xl shadow-black/70"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className="text-sm font-semibold text-rose-200">Reset settings</h3>
+            <h3 className="text-sm font-semibold text-rose-200">{tr("Reset settings", "Redefinir configuracoes")}</h3>
             <p className="mt-2 text-xs text-slate-300">
-              Do you want to reset all settings to default values?
+              {tr("Do you want to reset all settings to default values?", "Deseja redefinir todas as configuracoes para os valores padrao?")}
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -3155,7 +3217,7 @@ export default function HeatMapMemoryPage() {
                 onClick={() => setShowResetSettingsConfirmModal(false)}
                 className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-slate-700"
               >
-                Cancel
+                {tr("Cancel", "Cancelar")}
               </button>
               <button
                 type="button"
@@ -3165,7 +3227,7 @@ export default function HeatMapMemoryPage() {
                 }}
                 className="rounded border border-rose-500/50 bg-rose-500/20 px-2 py-1 text-[11px] text-rose-100 transition hover:bg-rose-500/30"
               >
-                Reset
+                {tr("Reset", "Redefinir")}
               </button>
             </div>
           </div>
