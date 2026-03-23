@@ -473,6 +473,7 @@ export default function HeatMapMemoryPage() {
   const [driveSyncMessage, setDriveSyncMessage] = useState("");
   const [showGoogleConnectSuggestionModal, setShowGoogleConnectSuggestionModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [resultsCanScrollDown, setResultsCanScrollDown] = useState(false);
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -486,6 +487,7 @@ export default function HeatMapMemoryPage() {
   const hasAttemptedDriveHydrationRef = useRef(false);
   const hasPromptedGoogleConnectRef = useRef(false);
   const accountMenuRef = useRef(null);
+  const resultsTableScrollRef = useRef(null);
 
   const fretLinePercents = useMemo(() => {
     const values = [];
@@ -1764,6 +1766,24 @@ export default function HeatMapMemoryPage() {
     };
   }, [showAccountMenu]);
 
+  const updateResultsScrollState = useCallback(() => {
+    const element = resultsTableScrollRef.current;
+    if (!element) return;
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+    setResultsCanScrollDown(maxScrollTop - scrollTop > 2);
+  }, []);
+
+  useEffect(() => {
+    updateResultsScrollState();
+  }, [updateResultsScrollState, statsRows, visibleMaxFret]);
+
+  useEffect(() => {
+    const onResize = () => updateResultsScrollState();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [updateResultsScrollState]);
+
   return (
     <div className="soundstage min-h-screen bg-slate-950 px-3 py-4 md:px-6">
       <main className="mx-auto max-w-[1300px] rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed md:p-5">
@@ -2558,19 +2578,24 @@ export default function HeatMapMemoryPage() {
             </div>
           )}
           <div className="rounded-xl border border-cyan-300/20 bg-slate-950/55 p-2 md:p-3">
-            <div className="overflow-x-auto">
+            <div className="relative">
+              <div
+                ref={resultsTableScrollRef}
+                onScroll={updateResultsScrollState}
+                className="max-h-[58vh] overflow-auto"
+              >
               <table className="mx-auto min-w-[980px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-700 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-2 py-2">{tr("String", "Corda")}</th>
-                  <th className="px-2 py-2">{tr("Fret", "Casa")}</th>
-                  <th className="px-2 py-2">{tr("Note", "Nota")}</th>
-                  <th className="px-2 py-2">{tr("Test count", "Qtd. de testes")}</th>
-                  <th className="px-2 py-2">{tr("Correct", "Acertos")}</th>
-                  <th className="px-2 py-2">{tr("Wrong", "Erros")}</th>
-                  <th className="px-2 py-2">{tr("% accuracy", "% de acerto")}</th>
-                  <th className="px-2 py-2">{tr("Last 5 correct", "Ult. 5 acertos")}</th>
-                  <th className="px-2 py-2">{tr("Average correct time (last 5)", "Tempo medio de acerto (ult. 5)")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("String", "Corda")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Fret", "Casa")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Note", "Nota")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Test count", "Qtd. de testes")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Correct", "Acertos")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Wrong", "Erros")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("% accuracy", "% de acerto")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Last 5 correct", "Ult. 5 acertos")}</th>
+                  <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">{tr("Average correct time (last 5)", "Tempo medio de acerto (ult. 5)")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2590,7 +2615,7 @@ export default function HeatMapMemoryPage() {
                     ? heatmapColorFromScore(0, true)
                     : responseTimeHeatColor(avgSec);
                   return (
-                    <tr key={row.id} className="border-b border-slate-800/80 text-slate-200">
+                    <tr key={row.id} className="border-b border-slate-800/80 text-slate-200 transition-colors hover:bg-slate-900/45">
                       <td className="px-2 py-2">{row.stringLabel}</td>
                       <td className="px-2 py-2">{row.fret}</td>
                       <td className="px-2 py-2">{row.note}</td>
@@ -2662,6 +2687,15 @@ export default function HeatMapMemoryPage() {
                 })}
               </tbody>
               </table>
+              </div>
+              {resultsCanScrollDown && (
+                <>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-8 bg-gradient-to-t from-slate-950/95 to-transparent" />
+                  <div className="pointer-events-none absolute bottom-1.5 right-2 z-30 rounded border border-cyan-300/30 bg-slate-900/85 px-1.5 py-0.5 text-[10px] text-cyan-100">
+                    {tr("Scroll to see more rows", "Role para ver mais linhas")}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </section>
