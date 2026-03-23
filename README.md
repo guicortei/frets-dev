@@ -15,12 +15,12 @@ Open source fretboard training tools built with Next.js.
 - `/` - manifesto-style landing page
 - `/tools` - tools catalog page
 - `/fret-notes` - interactive fretboard note name trainer
-- `/heat-map-memory` - memory heat map trainer
+- `/name-the-note` - note memory trainer
 - `/api/tts` - TTS proxy endpoint used by the trainer
 
-## Google Drive Backup (Heat Map Memory)
+## Google Drive Backup (Name the Note)
 
-The heat-map trainer supports secure OAuth and sync with Google Drive.
+The Name the Note trainer supports secure OAuth and sync with Google Drive.
 
 Environment variables required:
 

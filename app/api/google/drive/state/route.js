@@ -8,7 +8,7 @@ import {
 
 const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3";
-const DRIVE_STATE_FILE_NAME = "frets-dev-heat-map-memory-state.json";
+const DRIVE_STATE_FILE_NAME = "frets-dev-name-the-note-state.json";
 
 async function getAccessTokenFromRefresh(refreshToken) {
   const { clientId, clientSecret, tokenUrl } = getOAuthConfig();

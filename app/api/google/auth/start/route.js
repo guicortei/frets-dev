@@ -12,7 +12,7 @@ export async function GET(request) {
   try {
     const { authUrl, clientId, redirectUri, scopes } = getOAuthConfig();
     const { searchParams } = new URL(request.url);
-    const returnTo = searchParams.get("returnTo") || "/heat-map-memory";
+    const returnTo = searchParams.get("returnTo") || "/name-the-note";
 
     const statePayload = signStatePayload({
       nonce: crypto.randomUUID(),
@@ -34,7 +34,7 @@ export async function GET(request) {
     response.cookies.set(GOOGLE_STATE_COOKIE, statePayload, getCookieOptions(60 * 10));
     return response;
   } catch (error) {
-    const fallback = new URL("/heat-map-memory", request.url);
+    const fallback = new URL("/name-the-note", request.url);
     fallback.searchParams.set("googleAuth", "config_error");
     if (error instanceof Error) {
       const detail = `${error.name}:${error.message}`.slice(0, 180);

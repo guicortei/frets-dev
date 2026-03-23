@@ -9,10 +9,10 @@ const TOOLS = [
     tag: "Memory",
   },
   {
-    title: "Heat Map Memory",
+    title: "Name the Note",
     description:
-      "Random string/fret memory challenge with per-position stats, accuracy tracking, and response-time heat map data.",
-    href: "/heat-map-memory",
+      "Random string and fret memory challenge with per-position stats, accuracy tracking, and response-time map data.",
+    href: "/name-the-note",
     tag: "Memory",
   },
 ];

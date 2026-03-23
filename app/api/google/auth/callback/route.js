@@ -19,7 +19,7 @@ export async function GET(request) {
 
   const parsedState = verifyStatePayload(state || "");
   const storedParsedState = verifyStatePayload(storedState);
-  const returnTo = parsedState?.returnTo || storedParsedState?.returnTo || "/heat-map-memory";
+  const returnTo = parsedState?.returnTo || storedParsedState?.returnTo || "/name-the-note";
 
   const redirectTo = new URL(returnTo, request.url);
   const clearStateCookie = (response) => {
