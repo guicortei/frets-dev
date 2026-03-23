@@ -781,13 +781,14 @@ export default function HeatMapMemoryPage() {
 
   const getSampleBuffer = useCallback(async (sampleInfo) => {
     if (!sampleInfo) return null;
+    const cacheKey = sampleInfo.src || sampleInfo.noteName;
 
-    if (sampleBuffersRef.current.has(sampleInfo.noteName)) {
-      return sampleBuffersRef.current.get(sampleInfo.noteName);
+    if (sampleBuffersRef.current.has(cacheKey)) {
+      return sampleBuffersRef.current.get(cacheKey);
     }
 
-    if (sampleLoadingRef.current.has(sampleInfo.noteName)) {
-      return sampleLoadingRef.current.get(sampleInfo.noteName);
+    if (sampleLoadingRef.current.has(cacheKey)) {
+      return sampleLoadingRef.current.get(cacheKey);
     }
 
     const loadingPromise = (async () => {
@@ -797,13 +798,13 @@ export default function HeatMapMemoryPage() {
       if (!response.ok) throw new Error(`Failed sample: ${sampleInfo.src}`);
       const arrayBuffer = await response.arrayBuffer();
       const decoded = await context.decodeAudioData(arrayBuffer.slice(0));
-      sampleBuffersRef.current.set(sampleInfo.noteName, decoded);
+      sampleBuffersRef.current.set(cacheKey, decoded);
       return decoded;
     })().finally(() => {
-      sampleLoadingRef.current.delete(sampleInfo.noteName);
+      sampleLoadingRef.current.delete(cacheKey);
     });
 
-    sampleLoadingRef.current.set(sampleInfo.noteName, loadingPromise);
+    sampleLoadingRef.current.set(cacheKey, loadingPromise);
     return loadingPromise;
   }, [getAudioContext]);
 
@@ -812,16 +813,16 @@ export default function HeatMapMemoryPage() {
     if (!context) return;
 
     const target = positionPitch(stringId, fret);
-    const openStringSample = openStringSampleForStringId(stringId);
+    const selectedSample = openStringSampleForStringId(stringId);
     const fallbackLevel = fret === 0 ? 0 : 1;
 
     try {
-      const buffer = await getSampleBuffer(openStringSample);
-      if (!buffer || !openStringSample) throw new Error("No open-string sample buffer available");
+      const buffer = await getSampleBuffer(selectedSample);
+      if (!buffer || !selectedSample) throw new Error("No sample buffer available");
 
       const source = context.createBufferSource();
       source.buffer = buffer;
-      const playbackRate = 2 ** ((target.midi - openStringSample.midi) / 12);
+      const playbackRate = 2 ** ((target.midi - selectedSample.midi) / 12);
       source.playbackRate.setValueAtTime(playbackRate, context.currentTime);
 
       const gain = context.createGain();
@@ -843,11 +844,11 @@ export default function HeatMapMemoryPage() {
 
       if (fallbackLevel === 0) {
         console.info(
-          `[heat-map-memory][audio] fallback=none target=${target.noteName} sample=${openStringSample.noteName} rate=${playbackRate.toFixed(4)}`,
+          `[heat-map-memory][audio] fallback=none target=${target.noteName} sample=${selectedSample.noteName} rate=${playbackRate.toFixed(4)}`,
         );
       } else {
         console.info(
-          `[heat-map-memory][audio] fallback=1(pitch-shift-from-open-string) target=${target.noteName} sample=${openStringSample.noteName} rate=${playbackRate.toFixed(4)}`,
+          `[heat-map-memory][audio] fallback=1(pitch-shift-from-open-string) target=${target.noteName} sample=${selectedSample.noteName} rate=${playbackRate.toFixed(4)}`,
         );
       }
     } catch {
@@ -2300,7 +2301,7 @@ export default function HeatMapMemoryPage() {
       </main>
       {showDrawRulesModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-3"
+          className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 px-3 pt-8"
           onClick={() => {
             setShowDrawRulesModal(false);
             setShowResetSettingsConfirmModal(false);
