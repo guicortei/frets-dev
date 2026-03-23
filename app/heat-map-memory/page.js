@@ -79,6 +79,7 @@ const NUT_HOVER_EXPAND_LEFT_REM = 0.6;
 const NUT_HOVER_TOTAL_WIDTH_REM = 1.45;
 const HEAT_MAP_STORAGE_KEY = "heatMapMemory_savedState_v1";
 const HEAT_MAP_SETTINGS_STORAGE_KEY = "heatMapMemory_settings_v1";
+const DRIVE_AUTOSYNC_DEBOUNCE_MS = 1800;
 const RECENT_CORRECT_WINDOW = 5;
 const FRETBOARD_HEIGHT_PRESETS = {
   "extra-wide": 180,
@@ -456,6 +457,12 @@ export default function HeatMapMemoryPage() {
   const [draggingFretWindow, setDraggingFretWindow] = useState(null);
   const [draggingStringThumb, setDraggingStringThumb] = useState(null);
   const [draggingStringWindow, setDraggingStringWindow] = useState(null);
+  const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
+  const [googleProfile, setGoogleProfile] = useState(null);
+  const [isDriveSyncBusy, setIsDriveSyncBusy] = useState(false);
+  const [driveSyncMessage, setDriveSyncMessage] = useState("");
+  const [showGoogleConnectSuggestionModal, setShowGoogleConnectSuggestionModal] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -464,6 +471,11 @@ export default function HeatMapMemoryPage() {
   const sampleLoadingRef = useRef(new Map());
   const studySliderTrackRef = useRef(null);
   const studyStringSliderTrackRef = useRef(null);
+  const driveSyncTimerRef = useRef(null);
+  const hasLoadedLocalSettingsRef = useRef(false);
+  const hasAttemptedDriveHydrationRef = useRef(false);
+  const hasPromptedGoogleConnectRef = useRef(false);
+  const accountMenuRef = useRef(null);
 
   const fretLinePercents = useMemo(() => {
     const values = [];
@@ -1177,6 +1189,206 @@ export default function HeatMapMemoryPage() {
 
   answerNoteRef.current = answerNote;
 
+  const applyStoredSettings = useCallback((parsed) => {
+    if (!parsed || typeof parsed !== "object") return;
+
+    if (typeof parsed.showPerformanceHeatMap === "boolean") {
+      setShowPerformanceHeatMap(parsed.showPerformanceHeatMap);
+    }
+    if (typeof parsed.heatMapMetric === "string" && ["tests", "accuracy", "responseTime"].includes(parsed.heatMapMetric)) {
+      setHeatMapMetric(parsed.heatMapMetric);
+    }
+    if (typeof parsed.heatMapDisplayMode === "string" && ["number-color", "number", "color"].includes(parsed.heatMapDisplayMode)) {
+      setHeatMapDisplayMode(parsed.heatMapDisplayMode);
+    }
+    if (typeof parsed.heatMapPlacement === "string" && ["overlay", "separate"].includes(parsed.heatMapPlacement)) {
+      setHeatMapPlacement(parsed.heatMapPlacement);
+    }
+    if (typeof parsed.errorRetryMode === "string" && ["1", "2", "3", "until-correct"].includes(parsed.errorRetryMode)) {
+      setErrorRetryMode(parsed.errorRetryMode);
+    }
+    if (typeof parsed.responsePadMode === "string" && ["table", "keyboard"].includes(parsed.responsePadMode)) {
+      setResponsePadMode(parsed.responsePadMode);
+    }
+    if (typeof parsed.visibleMaxFret === "number") {
+      const bounded = Math.max(MIN_VISIBLE_FRET, Math.min(MAX_FRET, parsed.visibleMaxFret));
+      setVisibleMaxFret(bounded);
+    }
+    if (typeof parsed.fretboardHeightPreset === "string" && Object.prototype.hasOwnProperty.call(FRETBOARD_HEIGHT_PRESETS, parsed.fretboardHeightPreset)) {
+      setFretboardHeightPreset(parsed.fretboardHeightPreset);
+    }
+    if (typeof parsed.sampleProfile === "string" && SAMPLE_PROFILE_OPTIONS.some((profile) => profile.id === parsed.sampleProfile)) {
+      setSampleProfile(parsed.sampleProfile);
+    }
+    if (parsed.enabledNoteRows && typeof parsed.enabledNoteRows === "object") {
+      setEnabledNoteRows({
+        accidental: parsed.enabledNoteRows.accidental !== false,
+        natural: parsed.enabledNoteRows.natural !== false,
+      });
+    }
+    if (parsed.drawRules && typeof parsed.drawRules === "object") {
+      const nextPoolSizeRaw = Number.parseInt(parsed.drawRules.topResponsePoolSize, 10);
+      const nextPoolSize = Number.isFinite(nextPoolSizeRaw) ? Math.max(1, Math.min(200, nextPoolSizeRaw)) : DEFAULT_DRAW_RULES.topResponsePoolSize;
+      const nextBiasPercentRaw = Number.parseInt(parsed.drawRules.topResponseBiasPercent, 10);
+      const nextBiasPercent = Number.isFinite(nextBiasPercentRaw)
+        ? Math.max(0, Math.min(100, nextBiasPercentRaw))
+        : DEFAULT_DRAW_RULES.topResponseBiasPercent;
+      setDrawRules({
+        ...DEFAULT_DRAW_RULES,
+        avoidImmediateRepeat: parsed.drawRules.avoidImmediateRepeat !== false,
+        top10ByResponseAfterCoverage: parsed.drawRules.top10ByResponseAfterCoverage !== false,
+        prioritizeNeverCorrect: parsed.drawRules.prioritizeNeverCorrect !== false,
+        avoidSequentialOctaves: parsed.drawRules.avoidSequentialOctaves !== false,
+        insistOnError: parsed.drawRules.insistOnError !== false,
+        topResponsePoolSize: nextPoolSize,
+        topResponseBiasPercent: nextBiasPercent,
+      });
+    }
+  }, []);
+
+  const resetSettingsToDefaults = useCallback(() => {
+    setDrawRules(DEFAULT_DRAW_RULES);
+    setEnabledNoteRows({ accidental: true, natural: true });
+    setVisibleMaxFret(MAX_FRET);
+    setFretboardHeightPreset("medium");
+    setResponsePadMode("keyboard");
+    setShowPerformanceHeatMap(true);
+    setHeatMapMetric("responseTime");
+    setHeatMapDisplayMode("number-color");
+    setHeatMapPlacement("separate");
+    setErrorRetryMode("1");
+    setSampleProfile(SAMPLE_PROFILE_OPTIONS[0].id);
+    setSettingsTab("draw-rules");
+    setRetryContext({ targetId: null, wrongRepeatsDone: 0 });
+  }, []);
+
+  const buildPersistedSettings = useCallback(() => ({
+    showPerformanceHeatMap,
+    heatMapMetric,
+    heatMapDisplayMode,
+    heatMapPlacement,
+    errorRetryMode,
+    responsePadMode,
+    visibleMaxFret,
+    fretboardHeightPreset,
+    sampleProfile,
+    enabledNoteRows,
+    drawRules,
+  }), [
+    drawRules,
+    enabledNoteRows,
+    errorRetryMode,
+    fretboardHeightPreset,
+    heatMapDisplayMode,
+    heatMapMetric,
+    heatMapPlacement,
+    responsePadMode,
+    sampleProfile,
+    showPerformanceHeatMap,
+    visibleMaxFret,
+  ]);
+
+  const buildDriveStatePayload = useCallback(() => ({
+    statsRows,
+    totals,
+    settings: buildPersistedSettings(),
+    updatedAt: new Date().toISOString(),
+    schemaVersion: 1,
+  }), [buildPersistedSettings, statsRows, totals]);
+
+  const pullStateFromDrive = useCallback(async (showStatus = true) => {
+    try {
+      setIsDriveSyncBusy(true);
+      const response = await fetch("/api/google/drive/state", { method: "GET", cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || payload?.ok !== true) {
+        throw new Error(payload?.error || "Falha ao baixar dados do Google Drive.");
+      }
+      if (payload?.state) {
+        setStatsRows(mergeStoredStatsRows(payload.state?.statsRows));
+        setTotals(sanitizeStoredTotals(payload.state?.totals));
+        applyStoredSettings(payload.state?.settings);
+      }
+      if (showStatus) {
+        setDriveSyncMessage(payload?.state ? "Dados carregados do Google Drive." : "Nenhum backup encontrado no Google Drive.");
+      }
+      return true;
+    } catch {
+      if (showStatus) {
+        setDriveSyncMessage("Nao foi possivel carregar os dados do Google Drive.");
+      }
+      return false;
+    } finally {
+      setIsDriveSyncBusy(false);
+    }
+  }, [applyStoredSettings]);
+
+  const pushStateToDrive = useCallback(async (payloadOverride = null, showStatus = true) => {
+    try {
+      setIsDriveSyncBusy(true);
+      const payload = payloadOverride || buildDriveStatePayload();
+      const response = await fetch("/api/google/drive/state", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(data?.error || "Falha ao salvar dados no Google Drive.");
+      }
+      if (showStatus) {
+        setDriveSyncMessage("Dados salvos no Google Drive.");
+      }
+      return true;
+    } catch {
+      if (showStatus) {
+        setDriveSyncMessage("Nao foi possivel salvar os dados no Google Drive.");
+      }
+      return false;
+    } finally {
+      setIsDriveSyncBusy(false);
+    }
+  }, [buildDriveStatePayload]);
+
+  const loadGoogleProfile = useCallback(async () => {
+    try {
+      const response = await fetch("/api/google/auth/profile", { method: "GET", cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || payload?.connected !== true) {
+        setGoogleProfile(null);
+        return false;
+      }
+      setGoogleProfile(payload?.profile || null);
+      return true;
+    } catch {
+      setGoogleProfile(null);
+      return false;
+    }
+  }, []);
+
+  const startGoogleOAuth = useCallback(() => {
+    if (typeof window === "undefined") return;
+    setShowGoogleConnectSuggestionModal(false);
+    setShowAccountMenu(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("googleAuth");
+    const returnTo = `${url.pathname}${url.search}`;
+    window.location.assign(`/api/google/auth/start?returnTo=${encodeURIComponent(returnTo)}`);
+  }, []);
+
+  const disconnectGoogleDrive = useCallback(async () => {
+    try {
+      setIsDriveSyncBusy(true);
+      await fetch("/api/google/auth/disconnect", { method: "POST" });
+      setGoogleDriveConnected(false);
+      setGoogleProfile(null);
+      setDriveSyncMessage("Conta Google desconectada.");
+      setShowAccountMenu(false);
+    } finally {
+      setIsDriveSyncBusy(false);
+    }
+  }, []);
+
   useEffect(() => () => {
     sampleLoadingRef.current.clear();
     sampleBuffersRef.current.clear();
@@ -1210,94 +1422,105 @@ export default function HeatMapMemoryPage() {
       const raw = localStorage.getItem(HEAT_MAP_SETTINGS_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") return;
-
-      if (typeof parsed.showPerformanceHeatMap === "boolean") {
-        setShowPerformanceHeatMap(parsed.showPerformanceHeatMap);
-      }
-      if (typeof parsed.heatMapMetric === "string" && ["tests", "accuracy", "responseTime"].includes(parsed.heatMapMetric)) {
-        setHeatMapMetric(parsed.heatMapMetric);
-      }
-      if (typeof parsed.heatMapDisplayMode === "string" && ["number-color", "number", "color"].includes(parsed.heatMapDisplayMode)) {
-        setHeatMapDisplayMode(parsed.heatMapDisplayMode);
-      }
-      if (typeof parsed.heatMapPlacement === "string" && ["overlay", "separate"].includes(parsed.heatMapPlacement)) {
-        setHeatMapPlacement(parsed.heatMapPlacement);
-      }
-      if (typeof parsed.errorRetryMode === "string" && ["1", "2", "3", "until-correct"].includes(parsed.errorRetryMode)) {
-        setErrorRetryMode(parsed.errorRetryMode);
-      }
-      if (typeof parsed.responsePadMode === "string" && ["table", "keyboard"].includes(parsed.responsePadMode)) {
-        setResponsePadMode(parsed.responsePadMode);
-      }
-      if (typeof parsed.visibleMaxFret === "number") {
-        const bounded = Math.max(MIN_VISIBLE_FRET, Math.min(MAX_FRET, parsed.visibleMaxFret));
-        setVisibleMaxFret(bounded);
-      }
-      if (typeof parsed.fretboardHeightPreset === "string" && Object.prototype.hasOwnProperty.call(FRETBOARD_HEIGHT_PRESETS, parsed.fretboardHeightPreset)) {
-        setFretboardHeightPreset(parsed.fretboardHeightPreset);
-      }
-      if (typeof parsed.sampleProfile === "string" && SAMPLE_PROFILE_OPTIONS.some((profile) => profile.id === parsed.sampleProfile)) {
-        setSampleProfile(parsed.sampleProfile);
-      }
-      if (parsed.enabledNoteRows && typeof parsed.enabledNoteRows === "object") {
-        setEnabledNoteRows({
-          accidental: parsed.enabledNoteRows.accidental !== false,
-          natural: parsed.enabledNoteRows.natural !== false,
-        });
-      }
-      if (parsed.drawRules && typeof parsed.drawRules === "object") {
-        const nextPoolSizeRaw = Number.parseInt(parsed.drawRules.topResponsePoolSize, 10);
-        const nextPoolSize = Number.isFinite(nextPoolSizeRaw) ? Math.max(1, Math.min(200, nextPoolSizeRaw)) : DEFAULT_DRAW_RULES.topResponsePoolSize;
-        const nextBiasPercentRaw = Number.parseInt(parsed.drawRules.topResponseBiasPercent, 10);
-        const nextBiasPercent = Number.isFinite(nextBiasPercentRaw)
-          ? Math.max(0, Math.min(100, nextBiasPercentRaw))
-          : DEFAULT_DRAW_RULES.topResponseBiasPercent;
-        setDrawRules({
-          ...DEFAULT_DRAW_RULES,
-          avoidImmediateRepeat: parsed.drawRules.avoidImmediateRepeat !== false,
-          top10ByResponseAfterCoverage: parsed.drawRules.top10ByResponseAfterCoverage !== false,
-          prioritizeNeverCorrect: parsed.drawRules.prioritizeNeverCorrect !== false,
-          avoidSequentialOctaves: parsed.drawRules.avoidSequentialOctaves !== false,
-          insistOnError: parsed.drawRules.insistOnError !== false,
-          topResponsePoolSize: nextPoolSize,
-          topResponseBiasPercent: nextBiasPercent,
-        });
-      }
+      applyStoredSettings(parsed);
     } catch {
       // Ignore corrupted persisted settings and keep defaults.
+    } finally {
+      hasLoadedLocalSettingsRef.current = true;
     }
-  }, []);
+  }, [applyStoredSettings]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const payload = JSON.stringify({
-      showPerformanceHeatMap,
-      heatMapMetric,
-      heatMapDisplayMode,
-      heatMapPlacement,
-      errorRetryMode,
-      responsePadMode,
-      visibleMaxFret,
-      fretboardHeightPreset,
-      sampleProfile,
-      enabledNoteRows,
-      drawRules,
-    });
+    const payload = JSON.stringify(buildPersistedSettings());
     localStorage.setItem(HEAT_MAP_SETTINGS_STORAGE_KEY, payload);
-  }, [
-    drawRules,
-    enabledNoteRows,
-    errorRetryMode,
-    fretboardHeightPreset,
-    heatMapDisplayMode,
-    heatMapMetric,
-    heatMapPlacement,
-    responsePadMode,
-    sampleProfile,
-    showPerformanceHeatMap,
-    visibleMaxFret,
-  ]);
+  }, [buildPersistedSettings]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const authState = url.searchParams.get("googleAuth");
+    const authDetail = url.searchParams.get("googleAuthDetail");
+    if (!authState) return;
+
+    if (authState === "connected") {
+      setDriveSyncMessage("Conta Google conectada com sucesso.");
+      setGoogleDriveConnected(true);
+      loadGoogleProfile();
+      pullStateFromDrive(true);
+    } else if (authState === "denied") {
+      setDriveSyncMessage("Conexao com Google cancelada.");
+    } else {
+      const detailSuffix = authDetail ? ` (${authDetail})` : "";
+      setDriveSyncMessage(`Falha ao conectar com Google Drive.${detailSuffix}`);
+    }
+
+    url.searchParams.delete("googleAuth");
+    url.searchParams.delete("googleAuthDetail");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [loadGoogleProfile, pullStateFromDrive]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let isMounted = true;
+
+    const hydrate = async () => {
+      try {
+        const response = await fetch("/api/google/auth/status", { method: "GET", cache: "no-store" });
+        const payload = await response.json();
+        if (!isMounted) return;
+        const connected = payload?.connected === true;
+        setGoogleDriveConnected(connected);
+        if (connected && !hasAttemptedDriveHydrationRef.current) {
+          hasAttemptedDriveHydrationRef.current = true;
+          await pullStateFromDrive(false);
+          await loadGoogleProfile();
+        } else if (connected) {
+          await loadGoogleProfile();
+        } else {
+          setGoogleProfile(null);
+          if (!hasPromptedGoogleConnectRef.current) {
+            hasPromptedGoogleConnectRef.current = true;
+            setShowGoogleConnectSuggestionModal(true);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setGoogleDriveConnected(false);
+          setGoogleProfile(null);
+          if (!hasPromptedGoogleConnectRef.current) {
+            hasPromptedGoogleConnectRef.current = true;
+            setShowGoogleConnectSuggestionModal(true);
+          }
+        }
+      }
+    };
+
+    hydrate();
+    return () => {
+      isMounted = false;
+    };
+  }, [loadGoogleProfile, pullStateFromDrive]);
+
+  useEffect(() => {
+    if (!googleDriveConnected) return;
+    if (!hasLoadedLocalSettingsRef.current) return;
+    if (typeof window === "undefined") return;
+    const payload = buildDriveStatePayload();
+    if (driveSyncTimerRef.current) {
+      window.clearTimeout(driveSyncTimerRef.current);
+    }
+    driveSyncTimerRef.current = window.setTimeout(() => {
+      pushStateToDrive(payload, false);
+    }, DRIVE_AUTOSYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (driveSyncTimerRef.current) {
+        window.clearTimeout(driveSyncTimerRef.current);
+        driveSyncTimerRef.current = null;
+      }
+    };
+  }, [buildDriveStatePayload, googleDriveConnected, pushStateToDrive]);
 
   useEffect(() => {
     setStudyMinFret((current) => Math.min(current, visibleMaxFret));
@@ -1505,10 +1728,166 @@ export default function HeatMapMemoryPage() {
     };
   }, [noteFromKeyboardEvent]);
 
+  useEffect(() => {
+    if (!showAccountMenu) return undefined;
+
+    const onPointerDown = (event) => {
+      if (!accountMenuRef.current) return;
+      if (!accountMenuRef.current.contains(event.target)) {
+        setShowAccountMenu(false);
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setShowAccountMenu(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showAccountMenu]);
+
   return (
     <div className="soundstage min-h-screen bg-slate-950 px-3 py-4 md:px-6">
       <main className="mx-auto max-w-[1300px] rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed md:p-5">
-        <header className="mb-4 border-b border-cyan-400/20 pb-3">
+        <header className="relative mb-4 border-b border-cyan-400/20 pb-3">
+          <div className="absolute left-0 top-0 z-10 flex items-center gap-2">
+            <div ref={accountMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowAccountMenu((current) => !current)}
+              aria-haspopup="menu"
+              aria-expanded={showAccountMenu}
+              className={`group relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border transition ${
+                googleDriveConnected
+                  ? "border-cyan-300/50 bg-slate-900 hover:border-cyan-200/70"
+                  : "border-amber-300/60 bg-amber-200/10 hover:bg-amber-200/20"
+              }`}
+              title={googleDriveConnected
+                ? (googleProfile?.email || googleProfile?.name || "Conta Google conectada")
+                : "Clique para conectar sua conta Google"}
+            >
+              {googleDriveConnected && googleProfile?.imageUrl ? (
+                <img
+                  src={googleProfile.imageUrl}
+                  alt={googleProfile?.name ? `Conta conectada: ${googleProfile.name}` : "Conta Google conectada"}
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : !googleDriveConnected ? (
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="h-5 w-5"
+                >
+                  <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.26-.96 2.32-2.04 3.03l3.3 2.56C20.7 17.86 21.6 15.2 21.6 12c0-.6-.05-1.18-.15-1.74H12Z" />
+                  <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.63-2.44l-3.3-2.56c-.92.62-2.1.98-3.33.98-2.56 0-4.73-1.73-5.5-4.06H3.08v2.62A10 10 0 0 0 12 22Z" />
+                  <path fill="#4A90E2" d="M6.5 13.92A5.98 5.98 0 0 1 6.2 12c0-.67.12-1.32.3-1.92V7.46H3.08A10 10 0 0 0 2 12c0 1.62.39 3.14 1.08 4.46l3.42-2.54Z" />
+                  <path fill="#FBBC05" d="M12 6.02c1.47 0 2.8.5 3.84 1.48l2.88-2.88C16.96 2.98 14.7 2 12 2a10 10 0 0 0-8.92 5.46L6.5 10.08c.77-2.33 2.94-4.06 5.5-4.06Z" />
+                </svg>
+              ) : (
+                <span className={`text-sm font-semibold ${googleDriveConnected ? "text-cyan-100" : "text-amber-100"}`}>
+                  {(googleProfile?.name || googleProfile?.email || "G").trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span
+                className={`pointer-events-none absolute right-0 top-0 h-2.5 w-2.5 rounded-full border border-slate-950 ${
+                  googleDriveConnected ? "bg-emerald-400" : "bg-amber-300"
+                }`}
+              />
+            </button>
+            {showAccountMenu && (
+              <div
+                role="menu"
+                className="absolute left-0 mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
+              >
+                {googleDriveConnected ? (
+                  <div className="space-y-2">
+                    <div className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                      <p className="truncate text-xs font-semibold text-slate-100">{googleProfile?.name || "Conta Google conectada"}</p>
+                      <p className="truncate text-[11px] text-slate-400">{googleProfile?.email || "Google Drive ativo"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={disconnectGoogleDrive}
+                      className="w-full rounded border border-rose-500/50 bg-rose-500/15 px-2 py-1.5 text-left text-xs text-rose-100 transition hover:bg-rose-500/25"
+                    >
+                      Desconectar conta
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-[11px] text-slate-300">
+                      Conecte sua conta Google para ativar o salvamento automático no Drive.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={startGoogleOAuth}
+                      className="w-full rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1.5 text-left text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+                    >
+                      Conectar conta Google
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            </div>
+            {googleDriveConnected ? (
+              isDriveSyncBusy ? (
+                <div
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-100"
+                  title="Saving..."
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 animate-spin text-slate-300">
+                    <path
+                      fill="currentColor"
+                      d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15.5 8.5H21V3l-1.9 1.9A8.96 8.96 0 0 0 12 3Z"
+                    />
+                  </svg>
+                  <span>Saving...</span>
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                </div>
+              ) : (
+                <div
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-100"
+                  title="Saved to Drive"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 text-slate-300">
+                    <path
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm2.2-4.2 1.9 1.9 3.8-3.8"
+                    />
+                  </svg>
+                  <span>Saved to Drive</span>
+                </div>
+              )
+            ) : (
+              <div
+                className="inline-flex items-center rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-300"
+                title="Google Drive desconectado"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm1.1-8.3 6.8 6.8"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
           <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
             Mapa de Calor de Memória
           </h1>
@@ -2299,6 +2678,41 @@ export default function HeatMapMemoryPage() {
         </section>
 
       </main>
+      {showGoogleConnectSuggestionModal && !googleDriveConnected && (
+        <div
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-3"
+          onClick={() => setShowGoogleConnectSuggestionModal(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Conectar conta Google"
+            className="w-full max-w-md rounded-xl border border-cyan-400/30 bg-slate-900/95 p-4 shadow-2xl shadow-black/70"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-cyan-100">Ative o salvamento automático</h3>
+            <p className="mt-2 text-xs text-slate-300">
+              Conecte sua conta do Google para ativar o backup automático no Google Drive e evitar perda de progresso.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleConnectSuggestionModal(false)}
+                className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-[11px] text-slate-200 transition hover:bg-slate-700"
+              >
+                Agora não
+              </button>
+              <button
+                type="button"
+                onClick={startGoogleOAuth}
+                className="rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+              >
+                Conectar conta Google
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showDrawRulesModal && (
         <div
           className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 px-3 pt-8"
@@ -2383,6 +2797,17 @@ export default function HeatMapMemoryPage() {
                   }`}
                 >
                   Som
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("auto-save")}
+                  className={`mt-1 w-full rounded px-2 py-1 text-left text-xs transition ${
+                    settingsTab === "auto-save"
+                      ? "border border-cyan-300/40 bg-cyan-400/10 text-cyan-100"
+                      : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
+                  }`}
+                >
+                  Salvamento automático
                 </button>
                 <button
                   type="button"
@@ -2674,6 +3099,58 @@ export default function HeatMapMemoryPage() {
                     </div>
                   </div>
                 )}
+                {settingsTab === "auto-save" && (
+                  <div className="space-y-2">
+                    <div className="space-y-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-2 text-xs text-slate-200">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>Google Drive:</span>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${googleDriveConnected ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-700/60 text-slate-300"}`}>
+                          {googleDriveConnected ? "Conectado" : "Desconectado"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={startGoogleOAuth}
+                          disabled={isDriveSyncBusy}
+                          className="rounded border border-cyan-400/40 bg-cyan-500/20 px-2 py-1 text-[10px] font-semibold text-cyan-100 transition hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {googleDriveConnected ? "Reconectar conta Google" : "Conectar conta Google"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => pullStateFromDrive(true)}
+                          disabled={!googleDriveConnected || isDriveSyncBusy}
+                          className="rounded border border-slate-500/50 bg-slate-800 px-2 py-1 text-[10px] text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Baixar backup do Drive
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => pushStateToDrive(null, true)}
+                          disabled={!googleDriveConnected || isDriveSyncBusy}
+                          className="rounded border border-slate-500/50 bg-slate-800 px-2 py-1 text-[10px] text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Salvar backup no Drive
+                        </button>
+                        <button
+                          type="button"
+                          onClick={disconnectGoogleDrive}
+                          disabled={!googleDriveConnected || isDriveSyncBusy}
+                          className="rounded border border-rose-500/40 bg-rose-500/15 px-2 py-1 text-[10px] text-rose-100 transition hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Desconectar
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Sincronizacao automatica ativa quando conectado.
+                      </p>
+                      {driveSyncMessage ? (
+                        <p className="text-[10px] text-cyan-200">{driveSyncMessage}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2706,19 +3183,7 @@ export default function HeatMapMemoryPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setDrawRules(DEFAULT_DRAW_RULES);
-                  setEnabledNoteRows({ accidental: true, natural: true });
-                  setVisibleMaxFret(MAX_FRET);
-                  setFretboardHeightPreset("medium");
-                  setResponsePadMode("keyboard");
-                  setShowPerformanceHeatMap(true);
-                  setHeatMapMetric("responseTime");
-                  setHeatMapDisplayMode("number-color");
-                  setHeatMapPlacement("separate");
-                  setErrorRetryMode("1");
-                  setSampleProfile(SAMPLE_PROFILE_OPTIONS[0].id);
-                  setSettingsTab("draw-rules");
-                  setRetryContext({ targetId: null, wrongRepeatsDone: 0 });
+                  resetSettingsToDefaults();
                   setShowResetSettingsConfirmModal(false);
                 }}
                 className="rounded border border-rose-500/50 bg-rose-500/20 px-2 py-1 text-[11px] text-rose-100 transition hover:bg-rose-500/30"
