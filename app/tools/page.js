@@ -8,6 +8,13 @@ const TOOLS = [
     href: "/fret-notes",
     tag: "Memory",
   },
+  {
+    title: "Heat Map Memory",
+    description:
+      "Random string/fret memory challenge with per-position stats, accuracy tracking, and response-time heat map data.",
+    href: "/heat-map-memory",
+    tag: "Memory",
+  },
 ];
 
 export default function ToolsPage() {
