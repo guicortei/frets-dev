@@ -2553,7 +2553,7 @@ export default function HeatMapMemoryPage() {
                   <th className="px-2 py-2">String</th>
                   <th className="px-2 py-2">Fret</th>
                   <th className="px-2 py-2">Note</th>
-                  <th className="px-2 py-2">Qtd. de testes</th>
+                  <th className="px-2 py-2">Test count</th>
                   <th className="px-2 py-2">Correct</th>
                   <th className="px-2 py-2">Wrong</th>
                   <th className="px-2 py-2">% accuracy</th>
