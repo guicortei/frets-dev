@@ -98,3 +98,22 @@ body {
     animation: none;
   }
 }
+
+.target-feedback-pulse {
+  animation: target-feedback-pulse 380ms ease-out 2;
+}
+
+@keyframes target-feedback-pulse {
+  0% {
+    scale: 1;
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.22);
+  }
+  50% {
+    scale: 1.22;
+    box-shadow: 0 0 0 8px rgba(34, 211, 238, 0.08);
+  }
+  100% {
+    scale: 1;
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+  }
+}

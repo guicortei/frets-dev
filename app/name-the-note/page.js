@@ -474,6 +474,7 @@ export default function HeatMapMemoryPage() {
   const [showGoogleConnectSuggestionModal, setShowGoogleConnectSuggestionModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [resultsCanScrollDown, setResultsCanScrollDown] = useState(false);
+  const [targetFeedbackState, setTargetFeedbackState] = useState("idle");
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -929,6 +930,7 @@ export default function HeatMapMemoryPage() {
     gameTokenRef.current += 1;
     const firstTarget = chooseNextTarget();
     if (!firstTarget) return;
+    setTargetFeedbackState("idle");
     setIsRunning(true);
     setIsAdvancing(false);
     setTarget(firstTarget);
@@ -941,6 +943,7 @@ export default function HeatMapMemoryPage() {
   const stopGame = () => {
     // Discard current question and invalidate pending scoring.
     gameTokenRef.current += 1;
+    setTargetFeedbackState("idle");
     setIsRunning(false);
     setIsAdvancing(false);
     setTarget(null);
@@ -1121,6 +1124,7 @@ export default function HeatMapMemoryPage() {
     const elapsedMs = Math.max(0, eventTimeMs - questionStartMs);
     const selectedPitchClass = noteLabelToPitchClass(selectedNoteLabel);
     const isCorrect = selectedPitchClass === row.note;
+    setTargetFeedbackState(isCorrect ? "correct" : "wrong");
 
     setTotals((current) => ({
       total: current.total + 1,
@@ -1190,6 +1194,7 @@ export default function HeatMapMemoryPage() {
     }
 
     const keepsSameTarget = nextTarget.id === targetAtAnswerStart.id;
+    setTargetFeedbackState("idle");
     setTarget(nextTarget);
     if (!keepsSameTarget) {
       setQuestionStartMs(eventTimeMs + (isCorrect ? 980 : 360));
@@ -1574,6 +1579,7 @@ export default function HeatMapMemoryPage() {
 
     const nextTarget = chooseNextTarget(target);
     if (!nextTarget) return;
+    setTargetFeedbackState("idle");
     setTarget(nextTarget);
     setQuestionStartMs(performance.now());
     const nextStringId = STRINGS[nextTarget.stringIndex].id;
@@ -2209,7 +2215,13 @@ export default function HeatMapMemoryPage() {
 
                 {target && isRunning && (
                   <span
-                    className="pointer-events-none absolute z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-100 bg-black shadow-[0_0_12px_rgba(241,245,249,0.45)]"
+                    className={`pointer-events-none absolute z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-100 shadow-[0_0_12px_rgba(241,245,249,0.45)] ${
+                      targetFeedbackState === "correct"
+                        ? "bg-emerald-400 target-feedback-pulse"
+                        : targetFeedbackState === "wrong"
+                          ? "bg-rose-500 target-feedback-pulse"
+                          : "bg-black"
+                    }`}
                     style={{
                       left: target.fret === 0 ? "0.1875rem" : `${fretSegmentCenterPercent(target.fret, visibleMaxFret)}%`,
                       top: `${stringTopPercent(target.stringIndex)}%`,
