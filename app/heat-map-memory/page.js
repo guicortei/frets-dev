@@ -1756,29 +1756,54 @@ export default function HeatMapMemoryPage() {
     <div className="soundstage min-h-screen bg-slate-950 px-3 py-4 md:px-6">
       <main className="mx-auto max-w-[1300px] rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed md:p-5">
         <header className="relative mb-4 border-b border-cyan-400/20 pb-3">
-          <div className="absolute left-0 top-0 z-10 flex items-center gap-2">
-            <div ref={accountMenuRef} className="relative">
+          <div className="absolute right-0 top-0 z-10 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowAccountMenu((current) => !current)}
-              aria-haspopup="menu"
-              aria-expanded={showAccountMenu}
-              className={`group relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border transition ${
-                googleDriveConnected
-                  ? "border-cyan-300/50 bg-slate-900 hover:border-cyan-200/70"
-                  : "border-amber-300/60 bg-amber-200/10 hover:bg-amber-200/20"
-              }`}
-              title={googleDriveConnected
-                ? (googleProfile?.email || googleProfile?.name || "Conta Google conectada")
-                : "Clique para conectar sua conta Google"}
+              aria-pressed={showAllNotes}
+              onClick={() => setShowAllNotes((current) => !current)}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-300/20"
             >
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current">
+                <path strokeWidth="1.8" d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6-10-6-10-6Z" />
+                <circle cx="12" cy="12" r="2.6" strokeWidth="1.8" />
+                {!showAllNotes && <path strokeWidth="1.8" d="m4 20 16-16" />}
+              </svg>
+              {showAllNotes ? "Ocultar notas" : "Exibir notas"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsTab("draw-rules");
+                setShowDrawRulesModal(true);
+              }}
+              className="inline-flex items-center gap-1 rounded-md border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-300/20"
+            >
+              Configurações
+            </button>
+            <div ref={accountMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setShowAccountMenu((current) => !current)}
+                aria-haspopup="menu"
+                aria-expanded={showAccountMenu}
+                className={`group relative inline-flex h-10 w-10 items-center justify-center overflow-visible rounded-full border transition ${
+                  googleDriveConnected
+                    ? "border-cyan-300/50 bg-slate-900 hover:border-cyan-200/70"
+                    : "border-amber-300/60 bg-amber-200/10 hover:bg-amber-200/20"
+                }`}
+                title={googleDriveConnected
+                  ? (googleProfile?.email || googleProfile?.name || "Conta Google conectada")
+                  : "Clique para conectar sua conta Google"}
+              >
               {googleDriveConnected && googleProfile?.imageUrl ? (
-                <img
-                  src={googleProfile.imageUrl}
-                  alt={googleProfile?.name ? `Conta conectada: ${googleProfile.name}` : "Conta Google conectada"}
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+                <span className="h-full w-full overflow-hidden rounded-full">
+                  <img
+                    src={googleProfile.imageUrl}
+                    alt={googleProfile?.name ? `Conta conectada: ${googleProfile.name}` : "Conta Google conectada"}
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </span>
               ) : !googleDriveConnected ? (
                 <svg
                   viewBox="0 0 24 24"
@@ -1795,155 +1820,107 @@ export default function HeatMapMemoryPage() {
                   {(googleProfile?.name || googleProfile?.email || "G").trim().charAt(0).toUpperCase()}
                 </span>
               )}
-              <span
-                className={`pointer-events-none absolute right-0 top-0 h-2.5 w-2.5 rounded-full border border-slate-950 ${
-                  googleDriveConnected ? "bg-emerald-400" : "bg-amber-300"
-                }`}
-              />
-            </button>
-            {showAccountMenu && (
-              <div
-                role="menu"
-                className="absolute left-0 mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
-              >
-                {googleDriveConnected ? (
-                  <div className="space-y-2">
-                    <div className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5">
-                      <p className="truncate text-xs font-semibold text-slate-100">{googleProfile?.name || "Conta Google conectada"}</p>
-                      <p className="truncate text-[11px] text-slate-400">{googleProfile?.email || "Google Drive ativo"}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={disconnectGoogleDrive}
-                      className="w-full rounded border border-rose-500/50 bg-rose-500/15 px-2 py-1.5 text-left text-xs text-rose-100 transition hover:bg-rose-500/25"
-                    >
-                      Desconectar conta
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-[11px] text-slate-300">
-                      Conecte sua conta Google para ativar o salvamento automático no Drive.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={startGoogleOAuth}
-                      className="w-full rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1.5 text-left text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
-                    >
-                      Conectar conta Google
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-            </div>
-            {googleDriveConnected ? (
-              isDriveSyncBusy ? (
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-100"
-                  title="Saving..."
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 animate-spin text-slate-300">
-                    <path
-                      fill="currentColor"
-                      d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15.5 8.5H21V3l-1.9 1.9A8.96 8.96 0 0 0 12 3Z"
-                    />
-                  </svg>
-                  <span>Saving...</span>
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                </div>
+              {googleDriveConnected ? (
+                <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-950/95">
+                  {isDriveSyncBusy ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 animate-spin text-emerald-400">
+                      <path
+                        fill="currentColor"
+                        d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15.5 8.5H21V3l-1.9 1.9A8.96 8.96 0 0 0 12 3Z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 text-emerald-400">
+                      <path
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm2.2-4.2 1.9 1.9 3.8-3.8"
+                      />
+                    </svg>
+                  )}
+                </span>
               ) : (
-                <div
-                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-100"
-                  title="Saved to Drive"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 text-slate-300">
+                <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-950/95">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 text-amber-300">
                     <path
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="1.9"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm2.2-4.2 1.9 1.9 3.8-3.8"
+                      d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm1.1-8.3 6.8 6.8"
                     />
                   </svg>
-                  <span>Saved to Drive</span>
+                </span>
+              )}
+              </button>
+              {showAccountMenu && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
+                >
+                  {googleDriveConnected ? (
+                    <div className="space-y-2">
+                      <div className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                        <p className="truncate text-xs font-semibold text-slate-100">{googleProfile?.name || "Conta Google conectada"}</p>
+                        <p className="truncate text-[11px] text-slate-400">{googleProfile?.email || "Google Drive ativo"}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={disconnectGoogleDrive}
+                        className="w-full rounded border border-rose-500/50 bg-rose-500/15 px-2 py-1.5 text-left text-xs text-rose-100 transition hover:bg-rose-500/25"
+                      >
+                        Desconectar conta
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-[11px] text-slate-300">
+                        Conecte sua conta Google para ativar o salvamento automático no Drive.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={startGoogleOAuth}
+                        className="w-full rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1.5 text-left text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+                      >
+                        Conectar conta Google
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )
-            ) : (
-              <div
-                className="inline-flex items-center rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-300"
-                title="Google Drive desconectado"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm1.1-8.3 6.8 6.8"
-                  />
-                </svg>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-          <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
-            Mapa de Calor de Memória
-          </h1>
-          <p className="mx-auto mt-1 max-w-3xl text-center text-xs text-slate-400">
-            Jogo de memória no braço da guitarra com alvos aleatórios por corda e casa.
-          </p>
+          <div className="relative flex items-center justify-center pr-12 md:pr-14">
+            <div className="absolute left-0 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(event) => startGame(event.timeStamp)}
+                disabled={allowedPitchClasses.size === 0}
+                className="rounded-md border border-emerald-400/60 bg-emerald-400/20 px-2 py-1 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Iniciar
+              </button>
+              <button
+                type="button"
+                onClick={stopGame}
+                disabled={!isRunning && !isAdvancing}
+                className="rounded-md border border-rose-400/60 bg-rose-400/20 px-2 py-1 text-[11px] font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Parar
+              </button>
+            </div>
+            <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">
+              Mapa de Calor de Memória
+            </h1>
+          </div>
         </header>
 
         <section className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3 md:p-4">
           <div className="w-full">
-              <div className="mb-2 flex flex-wrap items-center justify-start gap-2 text-xs text-slate-400">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={(event) => startGame(event.timeStamp)}
-                    disabled={allowedPitchClasses.size === 0}
-                    className="rounded-md border border-emerald-400/60 bg-emerald-400/20 px-2 py-1 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Iniciar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={stopGame}
-                    disabled={!isRunning && !isAdvancing}
-                    className="rounded-md border border-rose-400/60 bg-rose-400/20 px-2 py-1 text-[11px] font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Parar
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-pressed={showAllNotes}
-                    onClick={() => setShowAllNotes((current) => !current)}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-300/20"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current">
-                      <path strokeWidth="1.8" d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6-10-6-10-6Z" />
-                      <circle cx="12" cy="12" r="2.6" strokeWidth="1.8" />
-                      {!showAllNotes && <path strokeWidth="1.8" d="m4 20 16-16" />}
-                    </svg>
-                    {showAllNotes ? "Ocultar notas" : "Exibir notas"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSettingsTab("draw-rules");
-                      setShowDrawRulesModal(true);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-md border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-100 transition hover:bg-cyan-300/20"
-                  >
-                    Configurações
-                  </button>
-                </div>
-              </div>
-
               <div className="relative">
                 <div
                   className="relative flex-1 border border-amber-500/30 shadow-[0_10px_16px_rgba(0,0,0,0.45)] shadow-inner shadow-black/40"
