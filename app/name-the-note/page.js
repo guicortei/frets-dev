@@ -2321,7 +2321,7 @@ export default function HeatMapMemoryPage() {
     : fretboardHeightPx;
 
   return (
-    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "h-[100dvh] overflow-hidden px-0 py-0" : "px-3 py-4 md:px-6"}`}>
+    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "h-[100svh] max-h-[100svh] overflow-hidden px-0 py-0" : "px-3 py-4 md:px-6"}`}>
       <main className={`mx-auto max-w-[1300px] [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-0" : "rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-5"}`}>
         {isCompactLandscape ? (
           <header className="relative mb-3 border-b border-cyan-400/20 px-1 py-1">
@@ -3316,7 +3316,7 @@ export default function HeatMapMemoryPage() {
                   );
                 })
               ) : (
-                <div className={`relative w-full max-w-[400px] ${isCompactLandscape ? "mx-auto h-22 rounded-none border-0 bg-transparent p-0" : "mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
+                <div className={`relative w-full max-w-[400px] ${isCompactLandscape ? "mx-auto h-20 rounded-none border-0 bg-transparent p-0" : "mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
                   <div className="grid h-full grid-cols-7 gap-0">
                     {naturalRowNotes.map((noteItem) => (
                       <button
