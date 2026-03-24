@@ -2317,7 +2317,7 @@ export default function HeatMapMemoryPage() {
   const shouldShowResultsPanel =
     activeCompactPanel === "all" || activeCompactPanel === "results";
   const effectiveFretboardHeightPx = isCompactLandscape
-    ? Math.max(108, Math.round(fretboardHeightPx * 0.62))
+    ? Math.max(82, Math.round(fretboardHeightPx * 0.5))
     : fretboardHeightPx;
 
   return (
@@ -3223,7 +3223,7 @@ export default function HeatMapMemoryPage() {
               </div>
             </div>
 
-            <div className="relative mt-3 h-8">
+            <div className={`relative ${isCompactLandscape ? "mt-1 h-5" : "mt-3 h-8"}`}>
               {Array.from({ length: visibleMaxFret + 1 }, (_, fret) => (
                 <span
                   key={`label-${fret}`}
@@ -3235,7 +3235,7 @@ export default function HeatMapMemoryPage() {
               ))}
             </div>
 
-            <div className="relative -mt-4 h-5 select-none">
+            <div className={`relative select-none ${isCompactLandscape ? "-mt-1 h-3" : "-mt-4 h-5"}`}>
               <div
                 className="absolute inset-y-0 left-0 right-0"
                 ref={studySliderTrackRef}
@@ -3284,7 +3284,10 @@ export default function HeatMapMemoryPage() {
           </div>
         </section>
 
-        <section className={isCompactLandscape ? "mt-auto shrink-0 p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
+        <section
+          className={isCompactLandscape ? "mt-auto shrink-0 p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}
+          style={isCompactLandscape ? { paddingBottom: "env(safe-area-inset-bottom)" } : undefined}
+        >
           <div className={isCompactLandscape ? "flex flex-col items-center justify-end" : "space-y-2"}>
             <div className={isCompactLandscape ? "w-full max-w-[560px]" : ""}>
               {responsePadMode === "table" ? (
@@ -3313,7 +3316,7 @@ export default function HeatMapMemoryPage() {
                   );
                 })
               ) : (
-                <div className={`relative w-full max-w-[400px] ${isCompactLandscape ? "mx-auto h-28 rounded-none border-0 bg-transparent p-0" : "mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
+                <div className={`relative w-full max-w-[400px] ${isCompactLandscape ? "mx-auto h-22 rounded-none border-0 bg-transparent p-0" : "mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
                   <div className="grid h-full grid-cols-7 gap-0">
                     {naturalRowNotes.map((noteItem) => (
                       <button
