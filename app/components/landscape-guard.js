@@ -4,7 +4,20 @@ import { useEffect, useState } from "react";
 
 function isPortraitViewport() {
   if (typeof window === "undefined") return false;
-  return window.innerWidth < window.innerHeight;
+  const mediaPortrait = window.matchMedia?.("(orientation: portrait)")?.matches;
+  const orientationType = screen.orientation?.type || "";
+  const screenPortrait = orientationType.startsWith("portrait");
+
+  // Use a tolerance because standalone PWAs on mobile can report
+  // transient dimensions while browser UI/safe-areas are settling.
+  const width = window.innerWidth || 0;
+  const height = window.innerHeight || 0;
+  const dimensionPortrait = width + 24 < height;
+
+  // Prefer media query when available, then orientation API, then dimensions.
+  if (typeof mediaPortrait === "boolean") return mediaPortrait || dimensionPortrait;
+  if (orientationType) return screenPortrait || dimensionPortrait;
+  return dimensionPortrait;
 }
 
 export default function LandscapeGuard() {
@@ -33,13 +46,19 @@ export default function LandscapeGuard() {
     update();
     tryLockLandscape();
 
+    const media = window.matchMedia?.("(orientation: portrait)");
+
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
+    screen.orientation?.addEventListener?.("change", update);
+    media?.addEventListener?.("change", update);
     document.addEventListener("visibilitychange", tryLockLandscape);
 
     return () => {
       window.removeEventListener("resize", update);
       window.removeEventListener("orientationchange", update);
+      screen.orientation?.removeEventListener?.("change", update);
+      media?.removeEventListener?.("change", update);
       document.removeEventListener("visibilitychange", tryLockLandscape);
     };
   }, []);
