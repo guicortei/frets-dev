@@ -2321,8 +2321,8 @@ export default function HeatMapMemoryPage() {
     : fretboardHeightPx;
 
   return (
-    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "px-0 py-0" : "px-3 py-4 md:px-6"}`}>
-      <main className={`mx-auto max-w-[1300px] [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "flex min-h-screen flex-col rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-0" : "rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-5"}`}>
+    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "h-[100dvh] overflow-hidden px-0 py-0" : "px-3 py-4 md:px-6"}`}>
+      <main className={`mx-auto max-w-[1300px] [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-0" : "rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-5"}`}>
         {isCompactLandscape ? (
           <header className="relative mb-3 border-b border-cyan-400/20 px-1 py-1">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 text-[11px]">
@@ -2696,7 +2696,7 @@ export default function HeatMapMemoryPage() {
 
         {shouldShowPracticePanel && (
         <>
-        <section className={isCompactLandscape ? "pl-2 pr-7" : "rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
+        <section className={isCompactLandscape ? "shrink-0 pl-2 pr-7" : "rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
           <div className="w-full">
             <div className="relative">
               <div
@@ -3284,8 +3284,8 @@ export default function HeatMapMemoryPage() {
           </div>
         </section>
 
-        <section className={isCompactLandscape ? "mt-auto p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
-          <div className={isCompactLandscape ? "flex min-h-[26vh] flex-col items-center justify-end" : "space-y-2"}>
+        <section className={isCompactLandscape ? "mt-auto shrink-0 p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
+          <div className={isCompactLandscape ? "flex flex-col items-center justify-end" : "space-y-2"}>
             <div className={isCompactLandscape ? "w-full max-w-[560px]" : ""}>
               {responsePadMode === "table" ? (
                 NOTE_FILTER_ROWS.map((row) => {
