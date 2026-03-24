@@ -2321,68 +2321,73 @@ export default function HeatMapMemoryPage() {
     : fretboardHeightPx;
 
   return (
-    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "px-1.5 py-1.5" : "px-3 py-4 md:px-6"}`}>
-      <main className={`mx-auto max-w-[1300px] border border-cyan-400/20 bg-slate-950/85 shadow-2xl shadow-black/50 backdrop-blur-xl [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "rounded-2xl p-2" : "rounded-3xl p-3 md:p-5"}`}>
+    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "px-0 py-0" : "px-3 py-4 md:px-6"}`}>
+      <main className={`mx-auto max-w-[1300px] [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "flex min-h-screen flex-col rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-0" : "rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-5"}`}>
         {isCompactLandscape ? (
-          <header className="relative mb-2 border-b border-cyan-400/20 pb-2">
-            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap text-[11px]">
-              <Link
-                href="/tools"
-                className="rounded border border-cyan-300/30 bg-slate-900/75 px-2 py-1 text-cyan-100 transition hover:bg-slate-800"
-              >
-                {tr("< Back", "< Voltar")}
-              </Link>
-              <button
-                type="button"
-                onClick={(event) => startGame(event.timeStamp)}
-                disabled={allowedPitchClasses.size === 0}
-                className="rounded border border-emerald-400/60 bg-emerald-400/20 px-2 py-1 font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:opacity-40"
-              >
-                {tr("Start", "Iniciar")}
-              </button>
-              <button
-                type="button"
-                onClick={stopGame}
-                disabled={!isRunning && !isAdvancing}
-                className="rounded border border-rose-400/60 bg-rose-400/20 px-2 py-1 font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:opacity-40"
-              >
-                {tr("Stop", "Parar")}
-              </button>
-              <span className="px-1 text-xs font-semibold text-slate-100">
-                {tr("Name the Note", "Nomeie a Nota")}
-              </span>
-              <button
-                type="button"
-                aria-pressed={showAllNotes}
-                onClick={() => setShowAllNotes((current) => !current)}
-                className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-300/20"
-              >
-                {showAllNotes
-                  ? tr("Hide notes", "Ocultar notas")
-                  : tr("Show notes", "Exibir notas")}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsTab("general");
-                  setShowDrawRulesModal(true);
-                }}
-                className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-300/20"
-              >
-                {tr("Settings", "Configuracoes")}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setCompactPanel((current) =>
-                    current === "results" ? "practice" : "results",
-                  )
-                }
-                className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-300/20"
-              >
-                {tr("Results", "Resultados")}
-              </button>
-              <div ref={accountMenuRef} className="relative">
+          <header className="relative mb-3 border-b border-cyan-400/20 px-1 py-1">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 text-[11px]">
+              <div className="flex min-w-0 items-center gap-1">
+                <Link
+                  href="/tools"
+                  className="rounded border border-cyan-300/30 bg-slate-900/75 px-2 py-0.5 text-cyan-100 transition hover:bg-slate-800"
+                >
+                  {tr("< Back", "< Voltar")}
+                </Link>
+                <span className="truncate px-0.5 text-xs font-semibold text-slate-100">
+                  {tr("Name the Note", "Nomeie a Nota")}
+                </span>
+              </div>
+              <div className="flex items-center justify-self-center gap-1">
+                <button
+                  type="button"
+                  onClick={(event) => startGame(event.timeStamp)}
+                  disabled={allowedPitchClasses.size === 0}
+                  className="rounded border border-emerald-400/60 bg-emerald-400/20 px-2 py-0.5 font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:opacity-40"
+                >
+                  {tr("Start", "Iniciar")}
+                </button>
+                <button
+                  type="button"
+                  onClick={stopGame}
+                  disabled={!isRunning && !isAdvancing}
+                  className="rounded border border-rose-400/60 bg-rose-400/20 px-2 py-0.5 font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:opacity-40"
+                >
+                  {tr("Stop", "Parar")}
+                </button>
+              </div>
+              <div className="flex items-center justify-self-end gap-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCompactPanel((current) =>
+                      current === "results" ? "practice" : "results",
+                    )
+                  }
+                  className="rounded border border-amber-300/60 bg-amber-300/20 px-2 py-0.5 text-amber-100 transition hover:bg-amber-300/30"
+                >
+                  {tr("Results", "Resultados")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={showAllNotes}
+                  onClick={() => setShowAllNotes((current) => !current)}
+                  className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-0.5 text-cyan-100 transition hover:bg-cyan-300/20"
+                >
+                  {showAllNotes
+                    ? tr("Hide notes", "Ocultar notas")
+                    : tr("Show notes", "Exibir notas")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettingsTab("general");
+                    setShowDrawRulesModal(true);
+                  }}
+                  className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-0.5 text-cyan-100 transition hover:bg-cyan-300/20"
+                >
+                  {tr("Settings", "Configuracoes")}
+                </button>
+                <div ref={accountMenuRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setShowAccountMenu((current) => !current)}
@@ -2467,6 +2472,7 @@ export default function HeatMapMemoryPage() {
                   </div>
                 )}
               </div>
+            </div>
             </div>
           </header>
         ) : (
@@ -2690,7 +2696,7 @@ export default function HeatMapMemoryPage() {
 
         {shouldShowPracticePanel && (
         <>
-        <section className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4">
+        <section className={isCompactLandscape ? "pl-2 pr-7" : "rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
           <div className="w-full">
             <div className="relative">
               <div
@@ -3278,80 +3284,82 @@ export default function HeatMapMemoryPage() {
           </div>
         </section>
 
-        <section className="mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4">
-          <div className="space-y-2">
-            {responsePadMode === "table" ? (
-              NOTE_FILTER_ROWS.map((row) => {
-                const rowTheme =
-                  row.id === "natural"
-                    ? `border-slate-300 bg-white text-black hover:bg-slate-200 ${isShiftPressed ? "opacity-50" : ""}`
-                    : "border-slate-700 bg-black text-white hover:bg-slate-900";
+        <section className={isCompactLandscape ? "mt-auto p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
+          <div className={isCompactLandscape ? "flex min-h-[26vh] flex-col items-center justify-end" : "space-y-2"}>
+            <div className={isCompactLandscape ? "w-full max-w-[560px]" : ""}>
+              {responsePadMode === "table" ? (
+                NOTE_FILTER_ROWS.map((row) => {
+                  const rowTheme =
+                    row.id === "natural"
+                      ? `border-slate-300 bg-white text-black hover:bg-slate-200 ${isShiftPressed ? "opacity-50" : ""}`
+                      : "border-slate-700 bg-black text-white hover:bg-slate-900";
 
-                return (
-                  <div key={row.id} className="grid grid-cols-7 gap-2">
-                    {row.notes.map((noteItem) => (
+                  return (
+                    <div key={row.id} className="grid grid-cols-7 gap-2">
+                      {row.notes.map((noteItem) => (
+                        <button
+                          key={`${row.id}-${noteItem.label}`}
+                          type="button"
+                          onClick={(event) =>
+                            answerNote(noteItem.value, event.timeStamp, "pad")
+                          }
+                          disabled={!isRunning || isAdvancing}
+                          className={`h-10 rounded-lg border text-sm font-semibold transition ${rowTheme} disabled:cursor-not-allowed`}
+                        >
+                          {noteItem.label}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className={`relative w-full max-w-[400px] ${isCompactLandscape ? "mx-auto h-28 rounded-none border-0 bg-transparent p-0" : "mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
+                  <div className="grid h-full grid-cols-7 gap-0">
+                    {naturalRowNotes.map((noteItem) => (
                       <button
-                        key={`${row.id}-${noteItem.label}`}
+                        key={`natural-key-${noteItem.label}`}
                         type="button"
                         onClick={(event) =>
                           answerNote(noteItem.value, event.timeStamp, "pad")
                         }
                         disabled={!isRunning || isAdvancing}
-                        className={`h-10 rounded-lg border text-sm font-semibold transition ${rowTheme} disabled:cursor-not-allowed`}
+                        className={`flex h-full items-end justify-center rounded-none border border-slate-300 bg-white pb-2 text-sm font-semibold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed first:rounded-l-sm last:rounded-r-sm ${isShiftPressed ? "opacity-50" : ""}`}
                       >
                         {noteItem.label}
                       </button>
                     ))}
                   </div>
-                );
-              })
-            ) : (
-              <div className={`relative mx-auto max-w-[400px] rounded-lg border border-slate-700 bg-slate-950/60 p-1.5 ${isCompactLandscape ? "h-28" : "h-44"}`}>
-                <div className="grid h-full grid-cols-7 gap-0">
-                  {naturalRowNotes.map((noteItem) => (
-                    <button
-                      key={`natural-key-${noteItem.label}`}
-                      type="button"
-                      onClick={(event) =>
-                        answerNote(noteItem.value, event.timeStamp, "pad")
-                      }
-                      disabled={!isRunning || isAdvancing}
-                      className={`flex h-full items-end justify-center rounded-none border border-slate-300 bg-white pb-2 text-sm font-semibold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed first:rounded-l-sm last:rounded-r-sm ${isShiftPressed ? "opacity-50" : ""}`}
-                    >
-                      {noteItem.label}
-                    </button>
-                  ))}
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[64%]">
+                    {[
+                      { label: "C# / Db", value: "C#", left: 14.2857 },
+                      { label: "D# / Eb", value: "D#", left: 28.5714 },
+                      { label: "F# / Gb", value: "F#", left: 57.1428 },
+                      { label: "G# / Ab", value: "G#", left: 71.4285 },
+                      { label: "A# / Bb", value: "A#", left: 85.7142 },
+                    ].map((noteItem) => {
+                      const [sharpLabel, flatLabel] = noteItem.label.split(" / ");
+                      return (
+                        <button
+                          key={`accidental-key-${noteItem.label}`}
+                          type="button"
+                          onClick={(event) =>
+                            answerNote(noteItem.value, event.timeStamp, "pad")
+                          }
+                          disabled={!isRunning || isAdvancing}
+                          className="pointer-events-auto absolute flex h-full w-[8.6%] -translate-x-1/2 flex-col justify-between rounded-b-md rounded-t-sm border border-slate-700 bg-black px-1 pb-2 pt-1.5 text-[10px] font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed"
+                          style={{ left: `${noteItem.left}%` }}
+                        >
+                          <span className="text-[9px] leading-none text-slate-300">
+                            {flatLabel}
+                          </span>
+                          <span className="leading-none">{sharpLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="pointer-events-none absolute inset-x-0 top-1 z-10 h-[64%]">
-                  {[
-                    { label: "C# / Db", value: "C#", left: 14.2857 },
-                    { label: "D# / Eb", value: "D#", left: 28.5714 },
-                    { label: "F# / Gb", value: "F#", left: 57.1428 },
-                    { label: "G# / Ab", value: "G#", left: 71.4285 },
-                    { label: "A# / Bb", value: "A#", left: 85.7142 },
-                  ].map((noteItem) => {
-                    const [sharpLabel, flatLabel] = noteItem.label.split(" / ");
-                    return (
-                      <button
-                        key={`accidental-key-${noteItem.label}`}
-                        type="button"
-                        onClick={(event) =>
-                          answerNote(noteItem.value, event.timeStamp, "pad")
-                        }
-                        disabled={!isRunning || isAdvancing}
-                        className="pointer-events-auto absolute flex h-full w-[8.6%] -translate-x-1/2 flex-col justify-between rounded-b-md rounded-t-sm border border-slate-700 bg-black px-1 pb-2 pt-1.5 text-[10px] font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed"
-                        style={{ left: `${noteItem.left}%` }}
-                      >
-                        <span className="text-[9px] leading-none text-slate-300">
-                          {flatLabel}
-                        </span>
-                        <span className="leading-none">{sharpLabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
             {allowedPitchClasses.size === 0 && (
               <p className="text-xs text-rose-300">
                 {tr(
@@ -3366,7 +3374,7 @@ export default function HeatMapMemoryPage() {
         )}
 
         {shouldShowResultsPanel && (
-        <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4">
+        <section className={isCompactLandscape ? "mt-0 p-0" : "mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-100">
               {tr("Results", "Resultados")}
@@ -3620,7 +3628,7 @@ export default function HeatMapMemoryPage() {
               </div>
             </div>
           )}
-          <div className="rounded-xl border border-cyan-300/20 bg-slate-950/55 p-2 md:p-3">
+          <div className={isCompactLandscape ? "p-0" : "rounded-xl border border-cyan-300/20 bg-slate-950/55 p-2 md:p-3"}>
             <div className="relative">
               <div
                 ref={resultsTableScrollRef}
