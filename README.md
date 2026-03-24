@@ -53,6 +53,28 @@ npm run build
 npm run start
 ```
 
+## PWA (Installable Web App)
+
+This project now includes a baseline PWA setup:
+
+- Web App Manifest at `/manifest.webmanifest` (from `app/manifest.js`)
+- Service Worker at `/sw.js` with runtime caching and offline fallback
+- Offline page at `/offline.html`
+- Placeholder app icons in `public/icons/`
+
+To test installability locally:
+
+```bash
+npm run build
+npm run start
+```
+
+Then open Chrome DevTools > Application:
+
+- Manifest (validate icons/start URL/display mode)
+- Service Workers (confirm `/sw.js` is active)
+- Lighthouse (PWA + Installable checks)
+
 ## Deploy
 
 This project is ready to deploy on Vercel with default Next.js settings.

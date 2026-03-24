@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="frets.dev maskable app icon placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17243f" />
+      <stop offset="100%" stop-color="#05070d" />
+    </linearGradient>
+  </defs>
+  <!-- Keep key content in the safe zone for maskable icons -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#bg)" />
+  <rect x="92" y="160" width="328" height="192" rx="24" fill="#5d3a24" />
+  <g stroke="#9ca3af" stroke-width="8">
+    <line x1="128" y1="160" x2="128" y2="352" />
+    <line x1="194" y1="160" x2="194" y2="352" />
+    <line x1="260" y1="160" x2="260" y2="352" />
+    <line x1="326" y1="160" x2="326" y2="352" />
+    <line x1="392" y1="160" x2="392" y2="352" />
+  </g>
+  <g stroke="#e5e7eb" stroke-width="6">
+    <line x1="92" y1="186" x2="420" y2="186" />
+    <line x1="92" y1="218" x2="420" y2="218" />
+    <line x1="92" y1="250" x2="420" y2="250" />
+    <line x1="92" y1="282" x2="420" y2="282" />
+    <line x1="92" y1="314" x2="420" y2="314" />
+  </g>
+</svg>

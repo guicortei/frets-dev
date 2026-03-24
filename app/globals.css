@@ -214,9 +214,38 @@ body {
   }
 }
 
+.answer-toast-slide {
+  animation: answer-toast-slide 1240ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
+  will-change: opacity, transform, filter;
+}
+
+@keyframes answer-toast-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+    filter: blur(1px);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(1px) scale(1);
+    filter: blur(0);
+  }
+  72% {
+    opacity: 0.98;
+    transform: translateY(-4px) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.985);
+    filter: blur(0.8px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .string-vibration-right,
-  .string-vibration-left {
+  .string-vibration-left,
+  .answer-toast-slide {
     animation: none;
   }
 }

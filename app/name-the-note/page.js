@@ -153,7 +153,7 @@ const DEFAULT_DRAW_RULES = {
   avoidSequentialOctaves: true,
   insistOnError: true,
   topResponsePoolSize: 5,
-  topResponseBiasPercent: 90,
+  topResponseBiasPercent: 50,
 };
 
 function buildInitialStats() {
@@ -590,8 +590,10 @@ export default function HeatMapMemoryPage() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [resultsCanScrollDown, setResultsCanScrollDown] = useState(false);
   const [targetFeedbackState, setTargetFeedbackState] = useState("idle");
+  const [targetCorrectHeatBadge, setTargetCorrectHeatBadge] = useState(null);
   const [stringVibration, setStringVibration] = useState(null);
   const [manualPlayMarker, setManualPlayMarker] = useState(null);
+  const [answerFeedbackToast, setAnswerFeedbackToast] = useState(null);
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -608,6 +610,7 @@ export default function HeatMapMemoryPage() {
   const resultsTableScrollRef = useRef(null);
   const stringVibrationClearTimerRef = useRef(null);
   const manualPlayMarkerTimerRef = useRef(null);
+  const answerFeedbackToastTimerRef = useRef(null);
 
   const fretLinePercents = useMemo(() => {
     const values = [];
@@ -1374,7 +1377,7 @@ export default function HeatMapMemoryPage() {
     return base;
   }, []);
 
-  const answerNote = async (selectedNoteLabel, eventTimeMs) => {
+  const answerNote = async (selectedNoteLabel, eventTimeMs, source = "pad") => {
     if (!isRunning || !target || isAdvancing) return;
     const tokenAtAnswerStart = gameTokenRef.current;
     const targetAtAnswerStart = target;
@@ -1390,6 +1393,37 @@ export default function HeatMapMemoryPage() {
     const selectedPitchClass = noteLabelToPitchClass(selectedNoteLabel);
     const isCorrect = selectedPitchClass === row.note;
     setTargetFeedbackState(isCorrect ? "correct" : "wrong");
+    if (!isCorrect) {
+      setTargetCorrectHeatBadge(null);
+    } else {
+      const nextRecentCorrectTimesMs = [
+        ...(row.recentCorrectTimesMs || []),
+        elapsedMs,
+      ].slice(-RECENT_CORRECT_WINDOW);
+      const nextAvgMs = getRecentCorrectAverageMs({
+        ...row,
+        correct: row.correct + 1,
+        recentCorrectTimesMs: nextRecentCorrectTimesMs,
+      });
+      if (nextAvgMs === null) {
+        const colors = heatmapColorFromScore(0, true);
+        setTargetCorrectHeatBadge({
+          label: "0",
+          background: colors.background,
+          border: colors.border,
+          textColor: colors.textColor,
+        });
+      } else {
+        const avgSec = nextAvgMs / 1000;
+        const colors = responseTimeHeatColor(avgSec);
+        setTargetCorrectHeatBadge({
+          label: `${avgSec.toFixed(1)}s`,
+          background: colors.background,
+          border: colors.border,
+          textColor: colors.textColor,
+        });
+      }
+    }
 
     setTotals((current) => ({
       total: current.total + 1,
@@ -1416,6 +1450,49 @@ export default function HeatMapMemoryPage() {
         };
       }),
     );
+
+    let shouldRepeatSameTarget = false;
+    if (!isCorrect && drawRules.insistOnError) {
+      const isUntilCorrect = errorRetryMode === "until-correct";
+      const configuredRepeats = isUntilCorrect
+        ? Number.POSITIVE_INFINITY
+        : Number.parseInt(errorRetryMode, 10);
+      const previousWrongRepeats =
+        retryContext.targetId === targetAtAnswerStart.id
+          ? retryContext.wrongRepeatsDone
+          : 0;
+      const nextWrongRepeats = previousWrongRepeats + 1;
+      shouldRepeatSameTarget =
+        isUntilCorrect || nextWrongRepeats <= configuredRepeats;
+    }
+
+    if (source === "pad") {
+      const shouldShowTrueNote = isCorrect || !shouldRepeatSameTarget;
+      const toastId = `answer-toast-${Date.now()}-${Math.random()}`;
+      const previousAvgMs =
+        row.correct > 0 ? row.correctTimeMsTotal / row.correct : null;
+      const deltaMs =
+        previousAvgMs == null ? 0 : Math.round(previousAvgMs - elapsedMs);
+
+      setAnswerFeedbackToast({
+        id: toastId,
+        fret: targetAtAnswerStart.fret,
+        stringIndex: targetAtAnswerStart.stringIndex,
+        showTrueNote: shouldShowTrueNote,
+        showDelta: isCorrect,
+        trueNote: row.note,
+        deltaMs,
+      });
+
+      if (answerFeedbackToastTimerRef.current) {
+        window.clearTimeout(answerFeedbackToastTimerRef.current);
+      }
+      answerFeedbackToastTimerRef.current = window.setTimeout(() => {
+        setAnswerFeedbackToast((current) =>
+          current?.id === toastId ? null : current,
+        );
+      }, 1300);
+    }
 
     if (isCorrect) {
       const askedStringId = STRINGS[targetAtAnswerStart.stringIndex].id;
@@ -1447,8 +1524,6 @@ export default function HeatMapMemoryPage() {
             ? retryContext.wrongRepeatsDone
             : 0;
         const nextWrongRepeats = previousWrongRepeats + 1;
-        const shouldRepeatSameTarget =
-          isUntilCorrect || nextWrongRepeats <= configuredRepeats;
 
         if (shouldRepeatSameTarget) {
           setRetryContext({
@@ -1470,6 +1545,7 @@ export default function HeatMapMemoryPage() {
 
     const keepsSameTarget = nextTarget.id === targetAtAnswerStart.id;
     setTargetFeedbackState("idle");
+    setTargetCorrectHeatBadge(null);
     setTarget(nextTarget);
     if (!keepsSameTarget) {
       setQuestionStartMs(eventTimeMs + (isCorrect ? 980 : 360));
@@ -1776,6 +1852,9 @@ export default function HeatMapMemoryPage() {
       }
       if (manualPlayMarkerTimerRef.current) {
         window.clearTimeout(manualPlayMarkerTimerRef.current);
+      }
+      if (answerFeedbackToastTimerRef.current) {
+        window.clearTimeout(answerFeedbackToastTimerRef.current);
       }
       sampleLoadingRef.current.clear();
       sampleBuffersRef.current.clear();
@@ -2144,7 +2223,11 @@ export default function HeatMapMemoryPage() {
       const noteLabel = noteFromKeyboardEvent(event);
       if (!noteLabel) return;
       event.preventDefault();
-      answerNoteRef.current?.(noteLabel, event.timeStamp || performance.now());
+      answerNoteRef.current?.(
+        noteLabel,
+        event.timeStamp || performance.now(),
+        "keyboard",
+      );
     };
 
     const onKeyUp = (event) => {
@@ -2810,12 +2893,12 @@ export default function HeatMapMemoryPage() {
 
                 {target && isRunning && (
                   <span
-                    className={`pointer-events-none absolute z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-100 shadow-[0_0_12px_rgba(241,245,249,0.45)] ${
+                    className={`pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full ${
                       targetFeedbackState === "correct"
-                        ? "bg-emerald-400 target-feedback-pulse"
+                        ? "target-feedback-pulse flex h-8 w-8 items-center justify-center px-1 text-[8px] font-semibold leading-none"
                         : targetFeedbackState === "wrong"
-                          ? "bg-rose-500 target-feedback-pulse"
-                          : "bg-black"
+                          ? "h-4 w-4 border border-slate-100 bg-rose-500 shadow-[0_0_12px_rgba(241,245,249,0.45)] target-feedback-pulse"
+                          : "h-4 w-4 border border-slate-100 bg-black shadow-[0_0_12px_rgba(241,245,249,0.45)]"
                     }`}
                     style={{
                       left:
@@ -2823,8 +2906,31 @@ export default function HeatMapMemoryPage() {
                           ? "0.1875rem"
                           : `${fretSegmentCenterPercent(target.fret, visibleMaxFret)}%`,
                       top: `${stringTopPercent(target.stringIndex)}%`,
+                      backgroundColor:
+                        targetFeedbackState === "correct"
+                          ? targetCorrectHeatBadge?.background ||
+                            "rgba(52, 211, 153, 0.95)"
+                          : undefined,
+                      borderColor:
+                        targetFeedbackState === "correct"
+                          ? targetCorrectHeatBadge?.border ||
+                            "rgba(16, 185, 129, 0.95)"
+                          : undefined,
+                      color:
+                        targetFeedbackState === "correct"
+                          ? targetCorrectHeatBadge?.textColor ||
+                            "rgba(0,0,0,0.85)"
+                          : undefined,
+                      boxShadow:
+                        targetFeedbackState === "correct"
+                          ? "0 0 12px rgba(241,245,249,0.45)"
+                          : undefined,
                     }}
-                  />
+                  >
+                    {targetFeedbackState === "correct"
+                      ? targetCorrectHeatBadge?.label || "0"
+                      : ""}
+                  </span>
                 )}
                 {manualPlayMarker && (
                   <span
@@ -2839,6 +2945,52 @@ export default function HeatMapMemoryPage() {
                         "0 0 12px rgba(241,245,249,0.52), 0 1px 6px rgba(0,0,0,0.62)",
                     }}
                   />
+                )}
+                {answerFeedbackToast && (
+                  <>
+                    {answerFeedbackToast.showDelta &&
+                      answerFeedbackToast.deltaMs !== null && (
+                      <span
+                        className="pointer-events-none absolute z-30"
+                        style={{
+                          left:
+                            answerFeedbackToast.fret === 0
+                              ? "0.1875rem"
+                              : `${fretSegmentCenterPercent(answerFeedbackToast.fret, visibleMaxFret)}%`,
+                          top: `calc(${stringTopPercent(answerFeedbackToast.stringIndex)}% - 46px)`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        <span
+                          className={`answer-toast-slide block rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm ${
+                            answerFeedbackToast.deltaMs >= 0
+                              ? "border-emerald-500/80 bg-emerald-400 text-black"
+                              : "border-rose-500/85 bg-rose-600 text-white"
+                          }`}
+                        >
+                          {answerFeedbackToast.deltaMs >= 0 ? "+" : ""}
+                          {answerFeedbackToast.deltaMs}ms
+                        </span>
+                      </span>
+                    )}
+                    {answerFeedbackToast.showTrueNote && (
+                      <span
+                        className="pointer-events-none absolute z-30"
+                        style={{
+                          left:
+                            answerFeedbackToast.fret === 0
+                              ? "0.1875rem"
+                              : `${fretSegmentCenterPercent(answerFeedbackToast.fret, visibleMaxFret)}%`,
+                          top: `calc(${stringTopPercent(answerFeedbackToast.stringIndex)}% - 28px)`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        <span className="answer-toast-slide block rounded-md border border-slate-600/90 bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-black shadow-sm">
+                          {answerFeedbackToast.trueNote}
+                        </span>
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
               <div className="pointer-events-none absolute inset-y-0 -right-5 w-4">
@@ -2964,7 +3116,7 @@ export default function HeatMapMemoryPage() {
                         key={`${row.id}-${noteItem.label}`}
                         type="button"
                         onClick={(event) =>
-                          answerNote(noteItem.value, event.timeStamp)
+                          answerNote(noteItem.value, event.timeStamp, "pad")
                         }
                         disabled={!isRunning || isAdvancing}
                         className={`h-10 rounded-lg border text-sm font-semibold transition ${rowTheme} disabled:cursor-not-allowed`}
@@ -2983,7 +3135,7 @@ export default function HeatMapMemoryPage() {
                       key={`natural-key-${noteItem.label}`}
                       type="button"
                       onClick={(event) =>
-                        answerNote(noteItem.value, event.timeStamp)
+                        answerNote(noteItem.value, event.timeStamp, "pad")
                       }
                       disabled={!isRunning || isAdvancing}
                       className={`flex h-full items-end justify-center rounded-none border border-slate-300 bg-white pb-2 text-sm font-semibold text-black transition hover:bg-slate-200 disabled:cursor-not-allowed first:rounded-l-sm last:rounded-r-sm ${isShiftPressed ? "opacity-50" : ""}`}
@@ -3006,7 +3158,7 @@ export default function HeatMapMemoryPage() {
                         key={`accidental-key-${noteItem.label}`}
                         type="button"
                         onClick={(event) =>
-                          answerNote(noteItem.value, event.timeStamp)
+                          answerNote(noteItem.value, event.timeStamp, "pad")
                         }
                         disabled={!isRunning || isAdvancing}
                         className="pointer-events-auto absolute flex h-full w-[8.6%] -translate-x-1/2 flex-col justify-between rounded-b-md rounded-t-sm border border-slate-700 bg-black px-1 pb-2 pt-1.5 text-[10px] font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed"
@@ -3454,7 +3606,7 @@ export default function HeatMapMemoryPage() {
       <FloatingBackButton href="/tools" />
       {showGoogleConnectSuggestionModal && !googleDriveConnected && (
         <div
-          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 px-3"
+          className="fixed inset-0 z-[95] flex items-start justify-center bg-black/70 px-3 pt-8"
           onClick={() => setShowGoogleConnectSuggestionModal(false)}
         >
           <div

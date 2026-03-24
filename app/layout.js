@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppLanguageProvider } from "./i18n-provider";
+import PwaRegister from "./components/pwa-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,24 @@ export const metadata = {
     description:
       "Open source fretboard training tools with note generation, metronome control, and voice guidance.",
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "frets.dev",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.svg", type: "image/svg+xml", sizes: "192x192" },
+      { url: "/icons/icon-512.svg", type: "image/svg+xml", sizes: "512x512" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icons/icon-192.svg"],
+  },
+};
+
+export const viewport = {
+  themeColor: "#090c14",
 };
 
 export default function RootLayout({ children }) {
@@ -49,6 +68,7 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AppLanguageProvider>{children}</AppLanguageProvider>
+        <PwaRegister />
       </body>
     </html>
   );
