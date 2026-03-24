@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppLanguageProvider } from "./i18n-provider";
 import PwaRegister from "./components/pwa-register";
+import LandscapeGuard from "./components/landscape-guard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,6 +69,7 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AppLanguageProvider>{children}</AppLanguageProvider>
+        <LandscapeGuard />
         <PwaRegister />
       </body>
     </html>

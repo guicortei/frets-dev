@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAppLanguage } from "../i18n-provider";
 import FloatingBackButton from "../components/floating-back-button";
 
@@ -594,6 +595,8 @@ export default function HeatMapMemoryPage() {
   const [stringVibration, setStringVibration] = useState(null);
   const [manualPlayMarker, setManualPlayMarker] = useState(null);
   const [answerFeedbackToast, setAnswerFeedbackToast] = useState(null);
+  const [isCompactLandscape, setIsCompactLandscape] = useState(false);
+  const [compactPanel, setCompactPanel] = useState("practice");
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -2292,9 +2295,181 @@ export default function HeatMapMemoryPage() {
     return () => window.removeEventListener("resize", onResize);
   }, [updateResultsScrollState]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateCompactMode = () => {
+      const inLandscape = window.innerWidth > window.innerHeight;
+      const hasLowHeight = window.innerHeight <= 560;
+      setIsCompactLandscape(inLandscape && hasLowHeight);
+    };
+    updateCompactMode();
+    window.addEventListener("resize", updateCompactMode);
+    window.addEventListener("orientationchange", updateCompactMode);
+    return () => {
+      window.removeEventListener("resize", updateCompactMode);
+      window.removeEventListener("orientationchange", updateCompactMode);
+    };
+  }, []);
+
+  const activeCompactPanel = isCompactLandscape ? compactPanel : "all";
+  const shouldShowPracticePanel =
+    activeCompactPanel === "all" || activeCompactPanel === "practice";
+  const shouldShowResultsPanel =
+    activeCompactPanel === "all" || activeCompactPanel === "results";
+  const effectiveFretboardHeightPx = isCompactLandscape
+    ? Math.max(108, Math.round(fretboardHeightPx * 0.62))
+    : fretboardHeightPx;
+
   return (
-    <div className="soundstage min-h-screen bg-slate-950 px-3 py-4 md:px-6">
-      <main className="mx-auto max-w-[1300px] rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed md:p-5">
+    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "px-1.5 py-1.5" : "px-3 py-4 md:px-6"}`}>
+      <main className={`mx-auto max-w-[1300px] border border-cyan-400/20 bg-slate-950/85 shadow-2xl shadow-black/50 backdrop-blur-xl [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "rounded-2xl p-2" : "rounded-3xl p-3 md:p-5"}`}>
+        {isCompactLandscape ? (
+          <header className="relative mb-2 border-b border-cyan-400/20 pb-2">
+            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap text-[11px]">
+              <Link
+                href="/tools"
+                className="rounded border border-cyan-300/30 bg-slate-900/75 px-2 py-1 text-cyan-100 transition hover:bg-slate-800"
+              >
+                {tr("< Back", "< Voltar")}
+              </Link>
+              <button
+                type="button"
+                onClick={(event) => startGame(event.timeStamp)}
+                disabled={allowedPitchClasses.size === 0}
+                className="rounded border border-emerald-400/60 bg-emerald-400/20 px-2 py-1 font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:opacity-40"
+              >
+                {tr("Start", "Iniciar")}
+              </button>
+              <button
+                type="button"
+                onClick={stopGame}
+                disabled={!isRunning && !isAdvancing}
+                className="rounded border border-rose-400/60 bg-rose-400/20 px-2 py-1 font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:opacity-40"
+              >
+                {tr("Stop", "Parar")}
+              </button>
+              <span className="px-1 text-xs font-semibold text-slate-100">
+                {tr("Name the Note", "Nomeie a Nota")}
+              </span>
+              <button
+                type="button"
+                aria-pressed={showAllNotes}
+                onClick={() => setShowAllNotes((current) => !current)}
+                className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-300/20"
+              >
+                {showAllNotes
+                  ? tr("Hide notes", "Ocultar notas")
+                  : tr("Show notes", "Exibir notas")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsTab("general");
+                  setShowDrawRulesModal(true);
+                }}
+                className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-300/20"
+              >
+                {tr("Settings", "Configuracoes")}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCompactPanel((current) =>
+                    current === "results" ? "practice" : "results",
+                  )
+                }
+                className="rounded border border-cyan-300/40 bg-cyan-400/10 px-2 py-1 text-cyan-100 transition hover:bg-cyan-300/20"
+              >
+                {tr("Results", "Resultados")}
+              </button>
+              <div ref={accountMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowAccountMenu((current) => !current)}
+                  aria-haspopup="menu"
+                  aria-expanded={showAccountMenu}
+                  className={`relative inline-flex h-8 w-8 items-center justify-center overflow-visible rounded-full border transition ${
+                    googleDriveConnected
+                      ? "border-cyan-300/50 bg-slate-900 hover:border-cyan-200/70"
+                      : "border-amber-300/60 bg-amber-200/10 hover:bg-amber-200/20"
+                  }`}
+                >
+                  {googleDriveConnected && googleProfile?.imageUrl ? (
+                    <span className="h-full w-full overflow-hidden rounded-full">
+                      <img
+                        src={googleProfile.imageUrl}
+                        alt={googleProfile?.name || "Google account"}
+                        className="h-full w-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+                      <path
+                        fill="#EA4335"
+                        d="M12 10.2v3.9h5.5c-.24 1.26-.96 2.32-2.04 3.03l3.3 2.56C20.7 17.86 21.6 15.2 21.6 12c0-.6-.05-1.18-.15-1.74H12Z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 22c2.7 0 4.97-.9 6.63-2.44l-3.3-2.56c-.92.62-2.1.98-3.33.98-2.56 0-4.73-1.73-5.5-4.06H3.08v2.62A10 10 0 0 0 12 22Z"
+                      />
+                      <path
+                        fill="#4A90E2"
+                        d="M6.5 13.92A5.98 5.98 0 0 1 6.2 12c0-.67.12-1.32.3-1.92V7.46H3.08A10 10 0 0 0 2 12c0 1.62.39 3.14 1.08 4.46l3.42-2.54Z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M12 6.02c1.47 0 2.8.5 3.84 1.48l2.88-2.88C16.96 2.98 14.7 2 12 2a10 10 0 0 0-8.92 5.46L6.5 10.08c.77-2.33 2.94-4.06 5.5-4.06Z"
+                      />
+                    </svg>
+                  )}
+                </button>
+                {showAccountMenu && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
+                  >
+                    {googleDriveConnected ? (
+                      <div className="space-y-2">
+                        <div className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5">
+                          <p className="truncate text-xs font-semibold text-slate-100">
+                            {googleProfile?.name || "Conta Google conectada"}
+                          </p>
+                          <p className="truncate text-[11px] text-slate-400">
+                            {googleProfile?.email || "Google Drive ativo"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={disconnectGoogleDrive}
+                          className="w-full rounded border border-rose-500/50 bg-rose-500/15 px-2 py-1.5 text-left text-xs text-rose-100 transition hover:bg-rose-500/25"
+                        >
+                          {tr("Disconnect account", "Desconectar conta")}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="rounded border border-slate-700 bg-slate-950/70 px-2 py-1.5 text-[11px] text-slate-300">
+                          {tr(
+                            "Connect your Google account to enable automatic backup on Drive.",
+                            "Conecte sua conta Google para ativar o backup automatico no Drive.",
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={startGoogleOAuth}
+                          className="w-full rounded border border-cyan-400/50 bg-cyan-500/20 px-2 py-1.5 text-left text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+                        >
+                          {tr("Connect Google account", "Conectar conta Google")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+        ) : (
         <header className="relative mb-4 border-b border-cyan-400/20 pb-3">
           <div className="absolute right-0 top-0 z-10 flex items-center gap-2">
             <button
@@ -2511,14 +2686,17 @@ export default function HeatMapMemoryPage() {
             </h1>
           </div>
         </header>
+        )}
 
-        <section className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3 md:p-4">
+        {shouldShowPracticePanel && (
+        <>
+        <section className="rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4">
           <div className="w-full">
             <div className="relative">
               <div
                 className="relative flex-1 border border-amber-500/30 shadow-[0_10px_16px_rgba(0,0,0,0.45)] shadow-inner shadow-black/40"
                 style={{
-                  height: `${fretboardHeightPx}px`,
+                  height: `${effectiveFretboardHeightPx}px`,
                   backgroundColor: "#4a2f1f",
                   backgroundImage: `
                       linear-gradient(90deg, rgba(25, 16, 11, 0.22) 0%, rgba(25, 16, 11, 0.08) 28%, rgba(25, 16, 11, 0.2) 52%, rgba(25, 16, 11, 0.09) 74%, rgba(25, 16, 11, 0.22) 100%),
@@ -3100,7 +3278,7 @@ export default function HeatMapMemoryPage() {
           </div>
         </section>
 
-        <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3 md:p-4">
+        <section className="mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4">
           <div className="space-y-2">
             {responsePadMode === "table" ? (
               NOTE_FILTER_ROWS.map((row) => {
@@ -3128,7 +3306,7 @@ export default function HeatMapMemoryPage() {
                 );
               })
             ) : (
-              <div className="relative mx-auto h-44 max-w-[400px] rounded-lg border border-slate-700 bg-slate-950/60 p-1.5">
+              <div className={`relative mx-auto max-w-[400px] rounded-lg border border-slate-700 bg-slate-950/60 p-1.5 ${isCompactLandscape ? "h-28" : "h-44"}`}>
                 <div className="grid h-full grid-cols-7 gap-0">
                   {naturalRowNotes.map((noteItem) => (
                     <button
@@ -3184,8 +3362,11 @@ export default function HeatMapMemoryPage() {
             )}
           </div>
         </section>
+        </>
+        )}
 
-        <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-3 md:p-4">
+        {shouldShowResultsPanel && (
+        <section className="mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-100">
               {tr("Results", "Resultados")}
@@ -3221,7 +3402,7 @@ export default function HeatMapMemoryPage() {
               <div
                 className="relative border border-amber-500/30 shadow-[0_10px_16px_rgba(0,0,0,0.45)] shadow-inner shadow-black/40"
                 style={{
-                  height: `${fretboardHeightPx}px`,
+                  height: `${effectiveFretboardHeightPx}px`,
                   backgroundColor: "#4a2f1f",
                   backgroundImage: `
                     linear-gradient(90deg, rgba(25, 16, 11, 0.22) 0%, rgba(25, 16, 11, 0.08) 28%, rgba(25, 16, 11, 0.2) 52%, rgba(25, 16, 11, 0.09) 74%, rgba(25, 16, 11, 0.22) 100%),
@@ -3444,9 +3625,15 @@ export default function HeatMapMemoryPage() {
               <div
                 ref={resultsTableScrollRef}
                 onScroll={updateResultsScrollState}
-                className="max-h-[58vh] overflow-auto"
+                className={`${isCompactLandscape ? "max-h-[32vh]" : "max-h-[58vh]"} overflow-auto`}
               >
-                <table className="mx-auto min-w-[980px] border-collapse text-sm">
+                <table
+                  className={`mx-auto border-collapse ${
+                    isCompactLandscape
+                      ? "min-w-[700px] text-xs"
+                      : "min-w-[980px] text-sm"
+                  }`}
+                >
                   <thead>
                     <tr className="border-b border-slate-700 text-left text-xs uppercase tracking-wide text-slate-400">
                       <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">
@@ -3602,8 +3789,9 @@ export default function HeatMapMemoryPage() {
             </div>
           </div>
         </section>
+        )}
       </main>
-      <FloatingBackButton href="/tools" />
+      {!isCompactLandscape && <FloatingBackButton href="/tools" />}
       {showGoogleConnectSuggestionModal && !googleDriveConnected && (
         <div
           className="fixed inset-0 z-[95] flex items-start justify-center bg-black/70 px-3 pt-8"
