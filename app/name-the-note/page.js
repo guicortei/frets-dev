@@ -2420,24 +2420,7 @@ export default function HeatMapMemoryPage() {
                   {tr("Name the Note", "Nomeie a Nota")}
                 </span>
               </div>
-              <div className="flex items-center justify-self-center gap-1">
-                <button
-                  type="button"
-                  onClick={(event) => startGame(event.timeStamp)}
-                  disabled={allowedPitchClasses.size === 0}
-                  className="rounded border border-emerald-400/60 bg-emerald-400/20 px-2 py-0.5 font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:opacity-40"
-                >
-                  {tr("Start", "Iniciar")}
-                </button>
-                <button
-                  type="button"
-                  onClick={stopGame}
-                  disabled={!isRunning && !isAdvancing}
-                  className="rounded border border-rose-400/60 bg-rose-400/20 px-2 py-0.5 font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:opacity-40"
-                >
-                  {tr("Stop", "Parar")}
-                </button>
-              </div>
+              <div className="justify-self-center" />
               <div className="flex items-center justify-self-end gap-1">
                 <button
                   type="button"
@@ -2511,11 +2494,59 @@ export default function HeatMapMemoryPage() {
                       />
                     </svg>
                   )}
+                  {googleDriveConnected ? (
+                    <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-950/95">
+                      {isDriveSyncBusy ? (
+                        <svg
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5 animate-spin text-emerald-400"
+                        >
+                          <path
+                            fill="currentColor"
+                            d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15.5 8.5H21V3l-1.9 1.9A8.96 8.96 0 0 0 12 3Z"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5 text-emerald-400"
+                        >
+                          <path
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm2.2-4.2 1.9 1.9 3.8-3.8"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-slate-950/95">
+                      <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        className="h-2.5 w-2.5 text-amber-300"
+                      >
+                        <path
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M7.5 18.5h8.8a4.2 4.2 0 0 0 .4-8.38 5.5 5.5 0 0 0-10.52 1.83A3.8 3.8 0 0 0 7.5 18.5Zm1.1-8.3 6.8 6.8"
+                        />
+                      </svg>
+                    </span>
+                  )}
                 </button>
                 {showAccountMenu && (
                   <div
                     role="menu"
-                    className="absolute right-0 mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
+                    className="absolute right-0 z-[140] mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
                   >
                     {googleDriveConnected ? (
                       <div className="space-y-2">
@@ -2710,7 +2741,7 @@ export default function HeatMapMemoryPage() {
               {showAccountMenu && (
                 <div
                   role="menu"
-                  className="absolute right-0 mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
+                  className="absolute right-0 z-[140] mt-2 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-2 shadow-2xl shadow-black/60 backdrop-blur"
                 >
                   {googleDriveConnected ? (
                     <div className="space-y-2">
@@ -3376,11 +3407,30 @@ export default function HeatMapMemoryPage() {
         </section>
 
         <section
-          className={isCompactLandscape ? "mt-0 flex min-h-0 flex-1 p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}
+          className={isCompactLandscape ? "mt-[3%] mb-[3%] flex min-h-0 flex-1" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}
           style={isCompactLandscape ? { paddingBottom: "env(safe-area-inset-bottom)" } : undefined}
         >
           <div className={isCompactLandscape ? "flex h-full w-full flex-col items-center justify-end" : "space-y-2"}>
-            <div className={isCompactLandscape ? "w-full max-w-[560px]" : ""}>
+            <div
+              className={
+                isCompactLandscape
+                  ? "grid h-full w-full grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-1.5"
+                  : ""
+              }
+            >
+              {isCompactLandscape && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={(event) => startGame(event.timeStamp)}
+                    disabled={allowedPitchClasses.size === 0}
+                    className="z-20 h-9 w-full max-w-[70px] rounded border border-emerald-400/60 bg-emerald-400/20 px-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/30 disabled:opacity-40"
+                  >
+                    {tr("Start", "Iniciar")}
+                  </button>
+                </div>
+              )}
+              <div className={isCompactLandscape ? "h-full w-full min-w-0" : ""}>
               {responsePadMode === "table" ? (
                 NOTE_FILTER_ROWS.map((row) => {
                   const rowTheme =
@@ -3407,7 +3457,7 @@ export default function HeatMapMemoryPage() {
                   );
                 })
               ) : (
-                <div className={`relative w-full max-w-[400px] ${isCompactLandscape ? "mx-auto h-20 rounded-none border-0 bg-transparent p-0" : "mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
+                <div className={`relative ${isCompactLandscape ? "mx-auto h-full w-full max-w-none rounded-none border-0 bg-transparent p-0" : "w-full max-w-[400px] mx-auto h-44 rounded-lg border border-slate-700 bg-slate-950/60 p-1.5"}`}>
                   <div className="grid h-full grid-cols-7 gap-0">
                     {naturalRowNotes.map((noteItem) => (
                       <button
@@ -3423,7 +3473,7 @@ export default function HeatMapMemoryPage() {
                       </button>
                     ))}
                   </div>
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[64%]">
+                <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 ${isCompactLandscape ? "h-[76%]" : "h-[64%]"}`}>
                     {[
                       { label: "C# / Db", value: "C#", left: 14.2857 },
                       { label: "D# / Eb", value: "D#", left: 28.5714 },
@@ -3451,6 +3501,19 @@ export default function HeatMapMemoryPage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+              </div>
+              {isCompactLandscape && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={stopGame}
+                    disabled={!isRunning && !isAdvancing}
+                    className="z-20 h-9 w-full max-w-[70px] rounded border border-rose-400/60 bg-rose-400/20 px-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-400/30 disabled:opacity-40"
+                  >
+                    {tr("Stop", "Parar")}
+                  </button>
                 </div>
               )}
             </div>
