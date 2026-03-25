@@ -597,6 +597,7 @@ export default function HeatMapMemoryPage() {
   const [answerFeedbackToast, setAnswerFeedbackToast] = useState(null);
   const [isCompactLandscape, setIsCompactLandscape] = useState(false);
   const [compactPanel, setCompactPanel] = useState("practice");
+  const [compactViewportHeight, setCompactViewportHeight] = useState(null);
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -1281,6 +1282,8 @@ export default function HeatMapMemoryPage() {
   );
 
   const onStudyTrackPointerDown = (event) => {
+    event.preventDefault();
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
     const snappedFret = nearestFretFromClientX(event.clientX);
     const thumbToMove =
       Math.abs(snappedFret - studyMinFret) <=
@@ -1292,7 +1295,9 @@ export default function HeatMapMemoryPage() {
   };
 
   const onStudyWindowDragPointerDown = (event) => {
+    event.preventDefault();
     event.stopPropagation();
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
     const anchorFret = nearestFretFromClientX(event.clientX);
     setDraggingFretWindow({
       anchorFret,
@@ -1321,6 +1326,8 @@ export default function HeatMapMemoryPage() {
   }, []);
 
   const onStudyStringTrackPointerDown = (event) => {
+    event.preventDefault();
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
     const snappedStringIndex = nearestStringFromClientY(event.clientY);
     const thumbToMove =
       Math.abs(snappedStringIndex - studyMinString) <=
@@ -1332,7 +1339,9 @@ export default function HeatMapMemoryPage() {
   };
 
   const onStudyStringWindowDragPointerDown = (event) => {
+    event.preventDefault();
     event.stopPropagation();
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
     const anchorStringIndex = nearestStringFromClientY(event.clientY);
     setDraggingStringWindow({
       anchorStringIndex,
@@ -1886,6 +1895,58 @@ export default function HeatMapMemoryPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!isCompactLandscape) {
+      setCompactViewportHeight(null);
+      return;
+    }
+
+    const updateViewportHeight = () => {
+      const rawHeight =
+        window.visualViewport?.height && Number.isFinite(window.visualViewport.height)
+          ? window.visualViewport.height
+          : window.innerHeight;
+      setCompactViewportHeight(Math.max(0, Math.round(rawHeight)));
+    };
+
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    window.addEventListener("orientationchange", updateViewportHeight);
+    window.visualViewport?.addEventListener?.("resize", updateViewportHeight);
+    window.visualViewport?.addEventListener?.("scroll", updateViewportHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportHeight);
+      window.removeEventListener("orientationchange", updateViewportHeight);
+      window.visualViewport?.removeEventListener?.("resize", updateViewportHeight);
+      window.visualViewport?.removeEventListener?.("scroll", updateViewportHeight);
+    };
+  }, [isCompactLandscape]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isCompactLandscape) return;
+
+    const { documentElement, body } = document;
+    const prevHtmlOverflow = documentElement.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+    const prevBodyTouchAction = body.style.touchAction;
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    body.style.touchAction = "manipulation";
+
+    return () => {
+      documentElement.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+      body.style.touchAction = prevBodyTouchAction;
+    };
+  }, [isCompactLandscape]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const payload = JSON.stringify({ statsRows, totals });
     localStorage.setItem(NAME_THE_NOTE_STORAGE_KEY, payload);
   }, [statsRows, totals]);
@@ -2084,6 +2145,7 @@ export default function HeatMapMemoryPage() {
     if (!draggingThumb) return undefined;
 
     const onPointerMove = (event) => {
+      if (event.cancelable) event.preventDefault();
       const snappedFret = nearestFretFromClientX(event.clientX);
       updateStudyWindow(draggingThumb, snappedFret);
     };
@@ -2092,11 +2154,13 @@ export default function HeatMapMemoryPage() {
       setDraggingThumb(null);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, [draggingThumb, nearestFretFromClientX, updateStudyWindow]);
 
@@ -2104,6 +2168,7 @@ export default function HeatMapMemoryPage() {
     if (!draggingFretWindow) return undefined;
 
     const onPointerMove = (event) => {
+      if (event.cancelable) event.preventDefault();
       const snappedFret = nearestFretFromClientX(event.clientX);
       const deltaFret = snappedFret - draggingFretWindow.anchorFret;
       const windowSize = Math.max(
@@ -2126,11 +2191,13 @@ export default function HeatMapMemoryPage() {
       setDraggingFretWindow(null);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, [draggingFretWindow, nearestFretFromClientX, visibleMaxFret]);
 
@@ -2138,6 +2205,7 @@ export default function HeatMapMemoryPage() {
     if (!draggingStringThumb) return undefined;
 
     const onPointerMove = (event) => {
+      if (event.cancelable) event.preventDefault();
       const snappedStringIndex = nearestStringFromClientY(event.clientY);
       updateStringStudyWindow(draggingStringThumb, snappedStringIndex);
     };
@@ -2146,11 +2214,13 @@ export default function HeatMapMemoryPage() {
       setDraggingStringThumb(null);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, [draggingStringThumb, nearestStringFromClientY, updateStringStudyWindow]);
 
@@ -2158,6 +2228,7 @@ export default function HeatMapMemoryPage() {
     if (!draggingStringWindow) return undefined;
 
     const onPointerMove = (event) => {
+      if (event.cancelable) event.preventDefault();
       const snappedStringIndex = nearestStringFromClientY(event.clientY);
       const deltaString =
         snappedStringIndex - draggingStringWindow.anchorStringIndex;
@@ -2183,11 +2254,13 @@ export default function HeatMapMemoryPage() {
       setDraggingStringWindow(null);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, [draggingStringWindow, nearestStringFromClientY]);
 
@@ -2321,8 +2394,18 @@ export default function HeatMapMemoryPage() {
     : fretboardHeightPx;
 
   return (
-    <div className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "h-[100svh] max-h-[100svh] overflow-hidden px-0 py-0" : "px-3 py-4 md:px-6"}`}>
-      <main className={`mx-auto max-w-[1300px] [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "flex h-full min-h-0 flex-col overflow-hidden rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-0" : "rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-5"}`}>
+    <div
+      className={`soundstage min-h-screen bg-slate-950 ${isCompactLandscape ? "overflow-hidden px-0 py-0" : "px-3 py-4 md:px-6"}`}
+      style={
+        isCompactLandscape && compactViewportHeight
+          ? {
+              height: `${compactViewportHeight}px`,
+              maxHeight: `${compactViewportHeight}px`,
+            }
+          : undefined
+      }
+    >
+      <main className={`mx-auto max-w-[1300px] [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed ${isCompactLandscape ? "flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-hidden rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-0" : "rounded-3xl border border-cyan-400/20 bg-slate-950/85 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:p-5"}`}>
         {isCompactLandscape ? (
           <header className="relative mb-3 border-b border-cyan-400/20 px-1 py-1">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 text-[11px]">
@@ -3181,12 +3264,12 @@ export default function HeatMapMemoryPage() {
                 <div
                   ref={studyStringSliderTrackRef}
                   onPointerDown={onStudyStringTrackPointerDown}
-                  className="pointer-events-auto absolute inset-y-1 left-1/2 w-4 -translate-x-1/2"
+                  className="pointer-events-auto absolute inset-y-1 left-1/2 w-4 -translate-x-1/2 touch-none"
                 >
                   <div className="pointer-events-none absolute inset-y-0 left-1/2 w-[1px] -translate-x-1/2 bg-slate-700/70" />
                   <div
                     onPointerDown={onStudyStringWindowDragPointerDown}
-                    className="pointer-events-auto absolute left-1/2 w-[8px] -translate-x-1/2 cursor-grab rounded bg-cyan-300/20 active:cursor-grabbing"
+                    className="pointer-events-auto absolute left-1/2 w-[8px] -translate-x-1/2 cursor-grab rounded bg-cyan-300/20 touch-none active:cursor-grabbing"
                     style={{
                       top: `${studyWindowTopPercent}%`,
                       height: `${Math.max(0, studyWindowBottomPercent - studyWindowTopPercent)}%`,
@@ -3203,20 +3286,24 @@ export default function HeatMapMemoryPage() {
                     type="button"
                     aria-label="Start of vertical study window"
                     onPointerDown={(event) => {
+                      event.preventDefault();
                       event.stopPropagation();
+                      event.currentTarget?.setPointerCapture?.(event.pointerId);
                       setDraggingStringThumb("min");
                     }}
-                    className="absolute left-1/2 z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10"
+                    className="absolute left-1/2 z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10 touch-none"
                     style={{ top: `${studyMinStringThumbPercent}%` }}
                   />
                   <button
                     type="button"
                     aria-label="End of vertical study window"
                     onPointerDown={(event) => {
+                      event.preventDefault();
                       event.stopPropagation();
+                      event.currentTarget?.setPointerCapture?.(event.pointerId);
                       setDraggingStringThumb("max");
                     }}
-                    className="absolute left-1/2 z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10"
+                    className="absolute left-1/2 z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10 touch-none"
                     style={{ top: `${studyMaxStringThumbPercent}%` }}
                   />
                 </div>
@@ -3237,14 +3324,14 @@ export default function HeatMapMemoryPage() {
 
             <div className={`relative select-none ${isCompactLandscape ? "-mt-1 h-3" : "-mt-4 h-5"}`}>
               <div
-                className="absolute inset-y-0 left-0 right-0"
+                className="absolute inset-y-0 left-0 right-0 touch-none"
                 ref={studySliderTrackRef}
                 onPointerDown={onStudyTrackPointerDown}
               >
                 <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-[1px] -translate-y-1/2 bg-slate-700/70" />
                 <div
                   onPointerDown={onStudyWindowDragPointerDown}
-                  className="absolute top-1/2 h-[6px] -translate-y-1/2 cursor-grab rounded bg-cyan-300/20 active:cursor-grabbing"
+                  className="absolute top-1/2 h-[6px] -translate-y-1/2 cursor-grab rounded bg-cyan-300/20 touch-none active:cursor-grabbing"
                   style={{
                     left: `${studyMinThumbPercent}%`,
                     width: `${Math.max(0, studyMaxThumbPercent - studyMinThumbPercent)}%`,
@@ -3263,20 +3350,24 @@ export default function HeatMapMemoryPage() {
                   type="button"
                   aria-label={`Start of study window: fret ${studyMinFret}`}
                   onPointerDown={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
+                    event.currentTarget?.setPointerCapture?.(event.pointerId);
                     setDraggingThumb("min");
                   }}
-                  className="absolute top-1/2 z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10"
+                  className="absolute top-1/2 z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10 touch-none"
                   style={{ left: `${studyMinThumbPercent}%` }}
                 />
                 <button
                   type="button"
                   aria-label={`End of study window: fret ${studyMaxFret}`}
                   onPointerDown={(event) => {
+                    event.preventDefault();
                     event.stopPropagation();
+                    event.currentTarget?.setPointerCapture?.(event.pointerId);
                     setDraggingThumb("max");
                   }}
-                  className="absolute top-1/2 z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10"
+                  className="absolute top-1/2 z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/40 bg-cyan-400/10 touch-none"
                   style={{ left: `${studyMaxThumbPercent}%` }}
                 />
               </div>
@@ -3285,10 +3376,10 @@ export default function HeatMapMemoryPage() {
         </section>
 
         <section
-          className={isCompactLandscape ? "mt-auto shrink-0 p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}
+          className={isCompactLandscape ? "mt-0 flex min-h-0 flex-1 p-0" : "mt-2 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}
           style={isCompactLandscape ? { paddingBottom: "env(safe-area-inset-bottom)" } : undefined}
         >
-          <div className={isCompactLandscape ? "flex flex-col items-center justify-end" : "space-y-2"}>
+          <div className={isCompactLandscape ? "flex h-full w-full flex-col items-center justify-end" : "space-y-2"}>
             <div className={isCompactLandscape ? "w-full max-w-[560px]" : ""}>
               {responsePadMode === "table" ? (
                 NOTE_FILTER_ROWS.map((row) => {
@@ -3377,7 +3468,7 @@ export default function HeatMapMemoryPage() {
         )}
 
         {shouldShowResultsPanel && (
-        <section className={isCompactLandscape ? "mt-0 p-0" : "mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
+        <section className={isCompactLandscape ? "mt-0 flex min-h-0 flex-1 p-0" : "mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-100">
               {tr("Results", "Resultados")}
