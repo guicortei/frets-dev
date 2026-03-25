@@ -3531,7 +3531,7 @@ export default function HeatMapMemoryPage() {
         )}
 
         {shouldShowResultsPanel && (
-        <section className={isCompactLandscape ? "mt-0 flex min-h-0 flex-1 p-0" : "mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
+        <section className={isCompactLandscape ? "mt-0 flex min-h-0 flex-1 flex-col p-0" : "mt-3 rounded-2xl border border-cyan-300/20 bg-slate-900/70 p-2.5 md:p-4"}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-100">
               {tr("Results", "Resultados")}
@@ -3785,12 +3785,18 @@ export default function HeatMapMemoryPage() {
               </div>
             </div>
           )}
-          <div className={isCompactLandscape ? "p-0" : "rounded-xl border border-cyan-300/20 bg-slate-950/55 p-2 md:p-3"}>
-            <div className="relative">
+          <div
+            className={
+              isCompactLandscape
+                ? "flex min-h-0 flex-1 flex-col p-0"
+                : "rounded-xl border border-cyan-300/20 bg-slate-950/55 p-2 md:p-3"
+            }
+          >
+            <div className={isCompactLandscape ? "relative flex min-h-0 flex-1 flex-col" : "relative"}>
               <div
                 ref={resultsTableScrollRef}
                 onScroll={updateResultsScrollState}
-                className={`${isCompactLandscape ? "max-h-[32vh]" : "max-h-[58vh]"} overflow-auto`}
+                className={`${isCompactLandscape ? "h-full min-h-0 flex-1" : "max-h-[58vh]"} overflow-auto`}
               >
                 <table
                   className={`mx-auto border-collapse ${
