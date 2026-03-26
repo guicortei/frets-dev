@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAppLanguage } from "../i18n-provider";
 import FloatingBackButton from "../components/floating-back-button";
 
@@ -540,6 +541,7 @@ export default function HeatMapMemoryPage() {
     setManualLocale,
     tr,
   } = useAppLanguage();
+  const pathname = usePathname();
   const [isRunning, setIsRunning] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [showAllNotes, setShowAllNotes] = useState(false);
@@ -1408,16 +1410,7 @@ export default function HeatMapMemoryPage() {
     if (!isCorrect) {
       setTargetCorrectHeatBadge(null);
     } else {
-      const nextRecentCorrectTimesMs = [
-        ...(row.recentCorrectTimesMs || []),
-        elapsedMs,
-      ].slice(-RECENT_CORRECT_WINDOW);
-      const nextAvgMs = getRecentCorrectAverageMs({
-        ...row,
-        correct: row.correct + 1,
-        recentCorrectTimesMs: nextRecentCorrectTimesMs,
-      });
-      if (nextAvgMs === null) {
+      if (!Number.isFinite(elapsedMs)) {
         const colors = heatmapColorFromScore(0, true);
         setTargetCorrectHeatBadge({
           label: "0",
@@ -1426,10 +1419,10 @@ export default function HeatMapMemoryPage() {
           textColor: colors.textColor,
         });
       } else {
-        const avgSec = nextAvgMs / 1000;
-        const colors = responseTimeHeatColor(avgSec);
+        const elapsedSec = elapsedMs / 1000;
+        const colors = responseTimeHeatColor(elapsedSec);
         setTargetCorrectHeatBadge({
-          label: `${avgSec.toFixed(1)}s`,
+          label: `${elapsedSec.toFixed(1)}s`,
           background: colors.background,
           border: colors.border,
           textColor: colors.textColor,
@@ -1481,8 +1474,7 @@ export default function HeatMapMemoryPage() {
     if (source === "pad") {
       const shouldShowTrueNote = isCorrect || !shouldRepeatSameTarget;
       const toastId = `answer-toast-${Date.now()}-${Math.random()}`;
-      const previousAvgMs =
-        row.correct > 0 ? row.correctTimeMsTotal / row.correct : null;
+      const previousAvgMs = getRecentCorrectAverageMs(row);
       const deltaMs =
         previousAvgMs == null ? 0 : Math.round(previousAvgMs - elapsedMs);
 
@@ -2384,6 +2376,33 @@ export default function HeatMapMemoryPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const emitViewportReflowEvents = () => {
+      window.dispatchEvent(new Event("resize"));
+      window.dispatchEvent(new Event("orientationchange"));
+    };
+
+    const rafIds = [];
+    const timeoutIds = [];
+
+    rafIds.push(
+      window.requestAnimationFrame(() => {
+        emitViewportReflowEvents();
+        rafIds.push(window.requestAnimationFrame(emitViewportReflowEvents));
+      }),
+    );
+    timeoutIds.push(window.setTimeout(emitViewportReflowEvents, 80));
+    timeoutIds.push(window.setTimeout(emitViewportReflowEvents, 220));
+    timeoutIds.push(window.setTimeout(emitViewportReflowEvents, 420));
+
+    return () => {
+      rafIds.forEach((id) => window.cancelAnimationFrame(id));
+      timeoutIds.forEach((id) => window.clearTimeout(id));
+    };
+  }, [pathname]);
+
   const activeCompactPanel = isCompactLandscape ? compactPanel : "all";
   const shouldShowPracticePanel =
     activeCompactPanel === "all" || activeCompactPanel === "practice";
@@ -3261,7 +3280,7 @@ export default function HeatMapMemoryPage() {
                       >
                         <span
                           className={`answer-toast-slide block rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm ${
-                            answerFeedbackToast.deltaMs >= 0
+                            answerFeedbackToast.deltaMs < 0
                               ? "border-emerald-500/80 bg-emerald-400 text-black"
                               : "border-rose-500/85 bg-rose-600 text-white"
                           }`}
