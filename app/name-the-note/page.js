@@ -133,7 +133,9 @@ const NUT_HOVER_TOTAL_WIDTH_REM = 1.45;
 const NAME_THE_NOTE_STORAGE_KEY = "nameTheNote_savedState_v1";
 const NAME_THE_NOTE_SETTINGS_STORAGE_KEY = "nameTheNote_settings_v1";
 const DRIVE_AUTOSYNC_DEBOUNCE_MS = 1800;
-const RECENT_CORRECT_WINDOW = 5;
+const DEFAULT_RECENT_CORRECT_SAMPLE_SIZE = 3;
+const MIN_RECENT_CORRECT_SAMPLE_SIZE = 1;
+const MAX_RECENT_CORRECT_HISTORY = 20;
 const FRETBOARD_HEIGHT_PRESETS = {
   "extra-wide": 180,
   wide: Math.round(180 * 0.9),
@@ -154,7 +156,7 @@ const DEFAULT_DRAW_RULES = {
   prioritizeNeverCorrect: true,
   avoidSequentialOctaves: true,
   insistOnError: true,
-  topResponsePoolSize: 5,
+  topResponsePoolPercent: 20,
   topResponseBiasPercent: 50,
 };
 
@@ -217,12 +219,12 @@ function mergeStoredStatsRows(rawRows) {
       fallbackAvg === null
         ? []
         : Array.from(
-            { length: Math.min(RECENT_CORRECT_WINDOW, correct) },
+            { length: Math.min(MAX_RECENT_CORRECT_HISTORY, correct) },
             () => fallbackAvg,
           );
     const recentCorrectTimesMs = (
       recentFromStore.length > 0 ? recentFromStore : reconstructedRecent
-    ).slice(-RECENT_CORRECT_WINDOW);
+    ).slice(-MAX_RECENT_CORRECT_HISTORY);
     return {
       ...baseRow,
       tests,
@@ -246,7 +248,10 @@ function sanitizeStoredTotals(rawTotals) {
   };
 }
 
-function getRecentCorrectAverageMs(row) {
+function getRecentCorrectAverageMs(
+  row,
+  sampleSize = DEFAULT_RECENT_CORRECT_SAMPLE_SIZE,
+) {
   if (
     !row ||
     !Array.isArray(row.recentCorrectTimesMs) ||
@@ -258,8 +263,15 @@ function getRecentCorrectAverageMs(row) {
     (value) => Number.isFinite(value) && value >= 0,
   );
   if (valid.length === 0) return null;
-  const total = valid.reduce((sum, value) => sum + value, 0);
-  return total / valid.length;
+  const normalizedSampleSize = Number.isFinite(sampleSize)
+    ? Math.max(
+        MIN_RECENT_CORRECT_SAMPLE_SIZE,
+        Math.min(MAX_RECENT_CORRECT_HISTORY, Math.trunc(sampleSize)),
+      )
+    : DEFAULT_RECENT_CORRECT_SAMPLE_SIZE;
+  const sampled = valid.slice(-normalizedSampleSize);
+  const total = sampled.reduce((sum, value) => sum + value, 0);
+  return total / sampled.length;
 }
 
 function fretPositionPercent(fretNumber, maxFret = MAX_FRET) {
@@ -600,6 +612,9 @@ export default function HeatMapMemoryPage() {
   const [isCompactLandscape, setIsCompactLandscape] = useState(false);
   const [compactPanel, setCompactPanel] = useState("practice");
   const [compactViewportHeight, setCompactViewportHeight] = useState(null);
+  const [recentCorrectSampleSize, setRecentCorrectSampleSize] = useState(
+    DEFAULT_RECENT_CORRECT_SAMPLE_SIZE,
+  );
   const gameTokenRef = useRef(0);
   const isFretPointerDownRef = useRef(false);
   const answerNoteRef = useRef(null);
@@ -782,7 +797,7 @@ export default function HeatMapMemoryPage() {
         };
       }
 
-      const avgMs = getRecentCorrectAverageMs(row);
+      const avgMs = getRecentCorrectAverageMs(row, recentCorrectSampleSize);
       const avgSec = avgMs === null ? null : avgMs / 1000;
       if (avgSec === null) {
         const colors = heatmapColorFromScore(0, true);
@@ -796,7 +811,13 @@ export default function HeatMapMemoryPage() {
         ...colors,
       };
     });
-  }, [fretboardNoteDots, heatMapMetric, maxTests, statsById]);
+  }, [
+    fretboardNoteDots,
+    heatMapMetric,
+    maxTests,
+    recentCorrectSampleSize,
+    statsById,
+  ]);
   const fretboardHeightPx =
     FRETBOARD_HEIGHT_PRESETS[fretboardHeightPreset] ||
     FRETBOARD_HEIGHT_PRESETS["extra-wide"];
@@ -882,7 +903,10 @@ export default function HeatMapMemoryPage() {
         const rankedBySlowerResponse = candidates
           .map((candidate) => {
             const row = statsById.get(candidate.id);
-            const avgResponseMs = getRecentCorrectAverageMs(row);
+            const avgResponseMs = getRecentCorrectAverageMs(
+              row,
+              recentCorrectSampleSize,
+            );
             return { candidate, avgResponseMs };
           })
           .sort((a, b) => {
@@ -892,10 +916,13 @@ export default function HeatMapMemoryPage() {
             if (bv < av) return -1;
             return 0;
           });
-        const configuredPoolSize = Math.max(
+        const configuredPoolPercent = Math.max(
           1,
-          Number.parseInt(drawRules.topResponsePoolSize, 10) ||
-            DEFAULT_DRAW_RULES.topResponsePoolSize,
+          Math.min(
+            100,
+            Number.parseInt(drawRules.topResponsePoolPercent, 10) ||
+              DEFAULT_DRAW_RULES.topResponsePoolPercent,
+          ),
         );
         const configuredBiasPercent = Math.max(
           0,
@@ -911,6 +938,10 @@ export default function HeatMapMemoryPage() {
           const randomIndex = Math.floor(Math.random() * candidates.length);
           return candidates[randomIndex];
         }
+        const configuredPoolSize = Math.max(
+          1,
+          Math.ceil((configuredPoolPercent / 100) * candidates.length),
+        );
         const topSlowest = rankedBySlowerResponse.slice(0, configuredPoolSize);
         const topPool =
           topSlowest.length > 0 ? topSlowest : rankedBySlowerResponse;
@@ -927,8 +958,9 @@ export default function HeatMapMemoryPage() {
       drawRules.avoidSequentialOctaves,
       drawRules.prioritizeNeverCorrect,
       drawRules.topResponseBiasPercent,
-      drawRules.topResponsePoolSize,
+      drawRules.topResponsePoolPercent,
       drawRules.top10ByResponseAfterCoverage,
+      recentCorrectSampleSize,
       statsById,
       studyMaxFret,
       studyMaxString,
@@ -1441,7 +1473,7 @@ export default function HeatMapMemoryPage() {
         if (item.id !== targetAtAnswerStart.id) return item;
         const updatedRecentCorrectTimes = isCorrect
           ? [...(item.recentCorrectTimesMs || []), elapsedMs].slice(
-              -RECENT_CORRECT_WINDOW,
+              -MAX_RECENT_CORRECT_HISTORY,
             )
           : item.recentCorrectTimesMs || [];
         return {
@@ -1474,9 +1506,12 @@ export default function HeatMapMemoryPage() {
     if (source === "pad") {
       const shouldShowTrueNote = isCorrect || !shouldRepeatSameTarget;
       const toastId = `answer-toast-${Date.now()}-${Math.random()}`;
-      const previousAvgMs = getRecentCorrectAverageMs(row);
+      const previousAvgMs = getRecentCorrectAverageMs(
+        row,
+        recentCorrectSampleSize,
+      );
       const deltaMs =
-        previousAvgMs == null ? 0 : Math.round(previousAvgMs - elapsedMs);
+        previousAvgMs == null ? 0 : Math.round(elapsedMs - previousAvgMs);
 
       setAnswerFeedbackToast({
         id: toastId,
@@ -1597,6 +1632,13 @@ export default function HeatMapMemoryPage() {
     ) {
       setResponsePadMode(parsed.responsePadMode);
     }
+    if (typeof parsed.recentCorrectSampleSize === "number") {
+      const bounded = Math.max(
+        MIN_RECENT_CORRECT_SAMPLE_SIZE,
+        Math.min(MAX_RECENT_CORRECT_HISTORY, Math.trunc(parsed.recentCorrectSampleSize)),
+      );
+      setRecentCorrectSampleSize(bounded);
+    }
     if (typeof parsed.visibleMaxFret === "number") {
       const bounded = Math.max(
         MIN_VISIBLE_FRET,
@@ -1628,13 +1670,19 @@ export default function HeatMapMemoryPage() {
       });
     }
     if (parsed.drawRules && typeof parsed.drawRules === "object") {
-      const nextPoolSizeRaw = Number.parseInt(
+      const nextPoolPercentRaw = Number.parseInt(
+        parsed.drawRules.topResponsePoolPercent,
+        10,
+      );
+      const legacyPoolSizeRaw = Number.parseInt(
         parsed.drawRules.topResponsePoolSize,
         10,
       );
-      const nextPoolSize = Number.isFinite(nextPoolSizeRaw)
-        ? Math.max(1, Math.min(200, nextPoolSizeRaw))
-        : DEFAULT_DRAW_RULES.topResponsePoolSize;
+      const nextPoolPercent = Number.isFinite(nextPoolPercentRaw)
+        ? Math.max(1, Math.min(100, nextPoolPercentRaw))
+        : Number.isFinite(legacyPoolSizeRaw)
+          ? Math.max(1, Math.min(100, legacyPoolSizeRaw))
+          : DEFAULT_DRAW_RULES.topResponsePoolPercent;
       const nextBiasPercentRaw = Number.parseInt(
         parsed.drawRules.topResponseBiasPercent,
         10,
@@ -1652,7 +1700,7 @@ export default function HeatMapMemoryPage() {
         avoidSequentialOctaves:
           parsed.drawRules.avoidSequentialOctaves !== false,
         insistOnError: parsed.drawRules.insistOnError !== false,
-        topResponsePoolSize: nextPoolSize,
+        topResponsePoolPercent: nextPoolPercent,
         topResponseBiasPercent: nextBiasPercent,
       });
     }
@@ -1668,6 +1716,7 @@ export default function HeatMapMemoryPage() {
     setHeatMapMetric("responseTime");
     setHeatMapDisplayMode("number-color");
     setHeatMapPlacement("separate");
+    setRecentCorrectSampleSize(DEFAULT_RECENT_CORRECT_SAMPLE_SIZE);
     setErrorRetryMode("1");
     setSampleProfile(SAMPLE_PROFILE_OPTIONS[0].id);
     setSettingsTab("general");
@@ -1680,6 +1729,7 @@ export default function HeatMapMemoryPage() {
       heatMapMetric,
       heatMapDisplayMode,
       heatMapPlacement,
+      recentCorrectSampleSize,
       errorRetryMode,
       responsePadMode,
       visibleMaxFret,
@@ -1696,6 +1746,7 @@ export default function HeatMapMemoryPage() {
       heatMapDisplayMode,
       heatMapMetric,
       heatMapPlacement,
+      recentCorrectSampleSize,
       responsePadMode,
       sampleProfile,
       showPerformanceHeatMap,
@@ -3848,25 +3899,31 @@ export default function HeatMapMemoryPage() {
                         {tr("% accuracy", "% de acerto")}
                       </th>
                       <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">
-                        {tr("Last 5 correct", "Ult. 5 acertos")}
+                        {tr(
+                          `Last ${recentCorrectSampleSize} correct`,
+                          `Ult. ${recentCorrectSampleSize} acertos`,
+                        )}
                       </th>
                       <th className="sticky top-0 z-20 bg-slate-950/95 px-2 py-2 backdrop-blur">
                         {tr(
-                          "Average correct time (last 5)",
-                          "Tempo medio de acerto (ult. 5)",
+                          `Average correct time (last ${recentCorrectSampleSize})`,
+                          `Tempo medio de acerto (ult. ${recentCorrectSampleSize})`,
                         )}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {statsRows.map((row) => {
-                      const avgMs = getRecentCorrectAverageMs(row);
+                      const avgMs = getRecentCorrectAverageMs(
+                        row,
+                        recentCorrectSampleSize,
+                      );
                       const avgSec = avgMs === null ? null : avgMs / 1000;
                       const recentTimes = Array.isArray(
                         row.recentCorrectTimesMs,
                       )
                         ? row.recentCorrectTimesMs
-                            .slice(-RECENT_CORRECT_WINDOW)
+                            .slice(-recentCorrectSampleSize)
                             .reverse()
                         : [];
                       const testsScore =
@@ -4107,7 +4164,7 @@ export default function HeatMapMemoryPage() {
                       : "border border-slate-700 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
                   }`}
                 >
-                  {tr("Performance Map", "Mapa de Desempenho")}
+                  {tr("Results", "Resultados")}
                 </button>
                 <button
                   type="button"
@@ -4257,9 +4314,9 @@ export default function HeatMapMemoryPage() {
                         <input
                           type="number"
                           min={1}
-                          max={200}
+                          max={100}
                           step={1}
-                          value={drawRules.topResponsePoolSize}
+                          value={drawRules.topResponsePoolPercent}
                           onChange={(event) => {
                             const parsed = Number.parseInt(
                               event.target.value,
@@ -4268,23 +4325,24 @@ export default function HeatMapMemoryPage() {
                             if (!Number.isFinite(parsed)) {
                               setDrawRules((current) => ({
                                 ...current,
-                                topResponsePoolSize:
-                                  DEFAULT_DRAW_RULES.topResponsePoolSize,
+                                topResponsePoolPercent:
+                                  DEFAULT_DRAW_RULES.topResponsePoolPercent,
                               }));
                               return;
                             }
-                            const bounded = Math.max(1, Math.min(200, parsed));
+                            const bounded = Math.max(1, Math.min(100, parsed));
                             setDrawRules((current) => ({
                               ...current,
-                              topResponsePoolSize: bounded,
+                              topResponsePoolPercent: bounded,
                             }));
                           }}
                           className="h-6 w-14 rounded border border-cyan-300/30 bg-slate-950/75 px-1 text-[11px] text-cyan-100 outline-none"
                         />
+                        <span>%</span>
                         <span>
                           {tr(
-                            "notes with the highest response time.",
-                            "notas com maior tempo de resposta.",
+                            "notes with the highest average response time.",
+                            "notas com maior tempo medio de resposta.",
                           )}
                         </span>
                       </span>
@@ -4462,6 +4520,36 @@ export default function HeatMapMemoryPage() {
 
                 {settingsTab === "performance-map" && (
                   <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
+                      <span>
+                        {tr(
+                          "Sampling size for average of recent correct answers:",
+                          "Tamanho da amostragem para media dos ultimos acertos:",
+                        )}
+                      </span>
+                      <input
+                        type="number"
+                        min={MIN_RECENT_CORRECT_SAMPLE_SIZE}
+                        max={MAX_RECENT_CORRECT_HISTORY}
+                        step={1}
+                        value={recentCorrectSampleSize}
+                        onChange={(event) => {
+                          const parsed = Number.parseInt(event.target.value, 10);
+                          if (!Number.isFinite(parsed)) {
+                            setRecentCorrectSampleSize(
+                              DEFAULT_RECENT_CORRECT_SAMPLE_SIZE,
+                            );
+                            return;
+                          }
+                          const bounded = Math.max(
+                            MIN_RECENT_CORRECT_SAMPLE_SIZE,
+                            Math.min(MAX_RECENT_CORRECT_HISTORY, parsed),
+                          );
+                          setRecentCorrectSampleSize(bounded);
+                        }}
+                        className="h-6 w-16 rounded border border-cyan-300/30 bg-slate-950/75 px-1 text-[11px] text-cyan-100 outline-none"
+                      />
+                    </div>
                     <label className="flex cursor-pointer items-center gap-2 rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-200">
                       <input
                         type="checkbox"
