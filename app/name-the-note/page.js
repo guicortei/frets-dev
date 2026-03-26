@@ -1937,33 +1937,76 @@ export default function HeatMapMemoryPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!isCompactLandscape) {
-      setCompactViewportHeight(null);
-      return;
-    }
+    if (typeof window === "undefined") return undefined;
 
-    const updateViewportHeight = () => {
-      const rawHeight =
-        window.visualViewport?.height && Number.isFinite(window.visualViewport.height)
+    const rafIds = [];
+    const timeoutIds = [];
+
+    const applyViewportLayout = () => {
+      const viewportWidth =
+        window.visualViewport?.width &&
+        Number.isFinite(window.visualViewport.width)
+          ? window.visualViewport.width
+          : window.innerWidth;
+      const viewportHeight =
+        window.visualViewport?.height &&
+        Number.isFinite(window.visualViewport.height)
           ? window.visualViewport.height
           : window.innerHeight;
-      setCompactViewportHeight(Math.max(0, Math.round(rawHeight)));
+
+      const inLandscape = viewportWidth > viewportHeight;
+      const hasLowHeight = viewportHeight <= 560;
+      setIsCompactLandscape(inLandscape && hasLowHeight);
+      setCompactViewportHeight(Math.max(0, Math.round(viewportHeight)));
     };
 
-    updateViewportHeight();
-    window.addEventListener("resize", updateViewportHeight);
-    window.addEventListener("orientationchange", updateViewportHeight);
-    window.visualViewport?.addEventListener?.("resize", updateViewportHeight);
-    window.visualViewport?.addEventListener?.("scroll", updateViewportHeight);
+    const scheduleViewportLayoutUpdate = () => {
+      applyViewportLayout();
+      rafIds.push(window.requestAnimationFrame(applyViewportLayout));
+      rafIds.push(
+        window.requestAnimationFrame(() => {
+          rafIds.push(window.requestAnimationFrame(applyViewportLayout));
+        }),
+      );
+      timeoutIds.push(window.setTimeout(applyViewportLayout, 80));
+      timeoutIds.push(window.setTimeout(applyViewportLayout, 220));
+      timeoutIds.push(window.setTimeout(applyViewportLayout, 420));
+      timeoutIds.push(window.setTimeout(applyViewportLayout, 760));
+    };
+    const applyViewportLayoutImmediate = () => {
+      applyViewportLayout();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        scheduleViewportLayoutUpdate();
+      }
+    };
+
+    scheduleViewportLayoutUpdate();
+    window.addEventListener("resize", scheduleViewportLayoutUpdate);
+    window.addEventListener("orientationchange", scheduleViewportLayoutUpdate);
+    window.addEventListener("pageshow", scheduleViewportLayoutUpdate);
+    window.addEventListener("focus", scheduleViewportLayoutUpdate);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.visualViewport?.addEventListener?.("resize", applyViewportLayoutImmediate);
+    window.visualViewport?.addEventListener?.("scroll", applyViewportLayoutImmediate);
 
     return () => {
-      window.removeEventListener("resize", updateViewportHeight);
-      window.removeEventListener("orientationchange", updateViewportHeight);
-      window.visualViewport?.removeEventListener?.("resize", updateViewportHeight);
-      window.visualViewport?.removeEventListener?.("scroll", updateViewportHeight);
+      window.removeEventListener("resize", scheduleViewportLayoutUpdate);
+      window.removeEventListener(
+        "orientationchange",
+        scheduleViewportLayoutUpdate,
+      );
+      window.removeEventListener("pageshow", scheduleViewportLayoutUpdate);
+      window.removeEventListener("focus", scheduleViewportLayoutUpdate);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.visualViewport?.removeEventListener?.("resize", applyViewportLayoutImmediate);
+      window.visualViewport?.removeEventListener?.("scroll", applyViewportLayoutImmediate);
+      rafIds.forEach((id) => window.cancelAnimationFrame(id));
+      timeoutIds.forEach((id) => window.clearTimeout(id));
     };
-  }, [isCompactLandscape]);
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2411,48 +2454,6 @@ export default function HeatMapMemoryPage() {
     return () => window.removeEventListener("resize", onResize);
   }, [updateResultsScrollState]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const updateCompactMode = () => {
-      const inLandscape = window.innerWidth > window.innerHeight;
-      const hasLowHeight = window.innerHeight <= 560;
-      setIsCompactLandscape(inLandscape && hasLowHeight);
-    };
-    updateCompactMode();
-    window.addEventListener("resize", updateCompactMode);
-    window.addEventListener("orientationchange", updateCompactMode);
-    return () => {
-      window.removeEventListener("resize", updateCompactMode);
-      window.removeEventListener("orientationchange", updateCompactMode);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
-    const emitViewportReflowEvents = () => {
-      window.dispatchEvent(new Event("resize"));
-      window.dispatchEvent(new Event("orientationchange"));
-    };
-
-    const rafIds = [];
-    const timeoutIds = [];
-
-    rafIds.push(
-      window.requestAnimationFrame(() => {
-        emitViewportReflowEvents();
-        rafIds.push(window.requestAnimationFrame(emitViewportReflowEvents));
-      }),
-    );
-    timeoutIds.push(window.setTimeout(emitViewportReflowEvents, 80));
-    timeoutIds.push(window.setTimeout(emitViewportReflowEvents, 220));
-    timeoutIds.push(window.setTimeout(emitViewportReflowEvents, 420));
-
-    return () => {
-      rafIds.forEach((id) => window.cancelAnimationFrame(id));
-      timeoutIds.forEach((id) => window.clearTimeout(id));
-    };
-  }, [pathname]);
 
   const activeCompactPanel = isCompactLandscape ? compactPanel : "all";
   const shouldShowPracticePanel =
