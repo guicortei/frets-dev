@@ -2,6 +2,10 @@
 
 Open source fretboard training tools built with Next.js.
 
+## Contact
+
+fretsdev@gmail.com
+
 `frets.dev` starts with a note trainer focused on fast, repeatable practice:
 
 - random note generation
